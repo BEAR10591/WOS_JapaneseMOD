@@ -1,7 +1,7 @@
 # WOS Japanese MOD
 
-『**Thomas & Friends™: Wonders of Sodor**』向けの日本語化（フォント差し替えなど）用のデータです。  
-ゲームの `TS2Prototype-WindowsNoEditor.pak` を **repak** で展開・再パックし、mod 用アセットを反映します。
+『**Thomas & Friends™: Wonders of Sodor**』向けの日本語フォント最適化 MOD です。  
+ゲームの `TS2Prototype-WindowsNoEditor.pak` を **repak** で展開・再パックし、MOD 用アセットを反映します。
 
 ---
 
@@ -14,7 +14,7 @@
 
 ## 同梱物
 
-OS ごとに **ビルド用スクリプト**の拡張子が異なります。**mod データのフォルダ**（`WOS_JapaneseMOD_Knapford/`、`WOS_JapaneseMOD_SODOR/`）は Windows / macOS で共通です。
+OS ごとに **ビルド用スクリプト**の拡張子が異なります。**MOD データのフォルダ**（`WOS_JapaneseMOD_Knapford/`、`WOS_JapaneseMOD_SODOR/`）は Windows / macOS で共通です。
 
 ### Windows
 
@@ -59,6 +59,9 @@ OS ごとに **ビルド用スクリプト**の拡張子が異なります。**m
 
 3. **初回だけバックアップが作られる**  
    ゲーム本体の元 pak が、同じフォルダ内の `Backup\TS2Prototype-WindowsNoEditor.pak` にコピーされます。**元に戻したいとき**は、このファイルをゲームの `…\Paks\` に戻す方法を検討してください（自己責任です）。
+   
+   ※ **ゲーム本体がアップデート**されると、ゲーム側の `TS2Prototype-WindowsNoEditor.pak` が新しいものに置き換わることがあります。その場合は **もう一度 `.bat` / `.command` を実行して MOD を再適用**してください。  
+   ※ アップデート後に **バックアップも取り直したい**場合は、実行前に `Backup\` フォルダ（または `Backup\TS2Prototype-WindowsNoEditor.pak`）を **一度削除**してから実行してください（バックアップが存在するとスクリプトは再作成をスキップします）。
 
 4. **「完了」と出たら終了**  
    スクリプトが、ビルドした pak をゲームのインストール先へコピーして差し替えます。
@@ -66,7 +69,7 @@ OS ごとに **ビルド用スクリプト**の拡張子が異なります。**m
 ### うまくいかないとき
 
 - **ゲームや Steam を起動したまま**だと、ファイルがロックされて失敗することがあります。いったんすべて終了してから再実行してください。
-- **ウイルス対策ソフト**が `.bat` やダウンロードした `repak` をブロックすることがあります。警告が出た場合は、当 mod 用フォルダを除外する／一時的に許可するなど、ご自身の判断で調整してください。
+- **ウイルス対策ソフト**が `.bat` やダウンロードした `repak` をブロックすることがあります。警告が出た場合は、当 MOD 用フォルダを除外する／一時的に許可するなど、ご自身の判断で調整してください。
 - Steam の **ライブラリを別ドライブ**に置いているなど、下記の「デフォルトのパス」と違う場合は、`.bat` をメモ帳で開き、ゲームの `TS2Prototype-WindowsNoEditor.pak` の場所に合わせて変数を編集する必要があります。
 
 ---
@@ -145,11 +148,11 @@ macOS では、同梱の **`WOS_JapaneseMOD_Knapford.command`** / **`WOS_Japanes
 ## 注意事項
 
 - ゲームファイルの改変は **自己責任**です。必ず **`Backup`** の有無を確認してください。
-- Knapford 用と SODOR 用では **作業フォルダと mod フォルダは別**ですが、**ゲームに入るファイル名は同じ** `TS2Prototype-WindowsNoEditor.pak` です。**最後に実行した方**がゲームに反映されます。
+- Knapford 用と SODOR 用では **作業フォルダと MOD フォルダは別**ですが、**ゲームに入るファイル名は同じ** `TS2Prototype-WindowsNoEditor.pak` です。**最後に実行した方**がゲームに反映されます。
 - オンライン規約・アンチチート等については、ご利用環境に応じてご確認ください。
 
 ---
 
 ## ライセンス
 
-リポジトリに `LICENSE` が無い場合、利用・再配布の条件はリポジトリ所有者に従ってください。ゲーム本体および Steam は各権利者の商標・著作物です。
+MIT License（詳細は `LICENSE` を参照）。ゲーム本体および Steam は各権利者の商標・著作物です。
