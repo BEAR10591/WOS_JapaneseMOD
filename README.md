@@ -1,7 +1,11 @@
 # WOS Japanese MOD
 
-『**Thomas & Friends™: Wonders of Sodor**』向けの日本語フォント最適化 MOD です。  
+![スクリーンショット](assets/screenshot-01.jpg)
+
+『**Thomas & Friends™: Wonders of Sodor**』向けの日本語表示最適化 MOD です。  
 ゲームの `TS2Prototype-WindowsNoEditor.pak` を **repak** で展開・再パックし、MOD 用アセットを反映します。
+
+**※ 現時点では翻訳（テキスト）そのものの修正は未実装です。今後のアップデートで順次対応予定です。**
 
 補足: 中国語（簡体字）表示についても、可読性が出るよう **適切なウェイトの Noto Sans SC** を使うよう調整しています。
 
@@ -158,3 +162,11 @@ macOS では、同梱の **`WOS_JapaneseMOD_Knapford.command`** / **`WOS_Japanes
 ## ライセンス
 
 MIT License（詳細は `LICENSE` を参照）。ゲーム本体および Steam は各権利者の商標・著作物です。
+
+---
+
+## スクリーンショット
+
+![スクリーンショット 02](assets/screenshot-02.jpg)
+![スクリーンショット 03](assets/screenshot-03.jpg)
+![スクリーンショット 04](assets/screenshot-04.jpg)
