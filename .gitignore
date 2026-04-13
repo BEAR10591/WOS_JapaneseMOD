@@ -33,3 +33,6 @@ env/
 Backup/
 WOS_pack_work_Knapford/
 WOS_pack_work_SODOR/
+
+# Release artifacts (do not commit)
+WOS_JapaneseMOD_v*.zip
