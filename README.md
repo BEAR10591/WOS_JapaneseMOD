@@ -3,6 +3,8 @@
 『**Thomas & Friends™: Wonders of Sodor**』向けの日本語フォント最適化 MOD です。  
 ゲームの `TS2Prototype-WindowsNoEditor.pak` を **repak** で展開・再パックし、MOD 用アセットを反映します。
 
+補足: 中国語（簡体字）表示についても、可読性が出るよう **適切なウェイトの Noto Sans SC** を使うよう調整しています。
+
 ---
 
 ## 配布について
@@ -147,7 +149,7 @@ macOS では、同梱の **`WOS_JapaneseMOD_Knapford.command`** / **`WOS_Japanes
 
 ## 注意事項
 
-- ゲームファイルの改変は **自己責任**です。必ず **`Backup`** の有無を確認してください。
+- ゲームファイルの改変は **自己責任** です。必ず **`Backup`** の有無を確認してください。
 - Knapford 用と SODOR 用では **作業フォルダと MOD フォルダは別**ですが、**ゲームに入るファイル名は同じ** `TS2Prototype-WindowsNoEditor.pak` です。**最後に実行した方**がゲームに反映されます。
 - オンライン規約・アンチチート等については、ご利用環境に応じてご確認ください。
 
