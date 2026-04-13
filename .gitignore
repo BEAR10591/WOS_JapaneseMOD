@@ -1,0 +1,35 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# エディタ・ツール
+*.swp
+*.swo
+*~
+.idea/
+
+# Python（補助スクリプト等で使う場合）
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+env/
+
+# ログ・一時ファイル
+*.log
+*.tmp
+*.temp
+
+# ビルドスクリプトが生成するバックアップ・作業フォルダ
+Backup/
+WOS_pack_work_Knapford/
+WOS_pack_work_SODOR/
