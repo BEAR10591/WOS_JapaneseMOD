@@ -128,88 +128,75 @@ step_migrate_v010_backup() {
   fi
 }
 
+backup_one() {
+  # args: src dst
+  local src="$1"
+  local dst="$2"
+  if [[ -f "${dst}" ]]; then
+    echo "       既にバックアップがあります。再コピー・Backup の作り直しはしません。"
+    echo "       ${dst}"
+    return 0
+  fi
+  if [[ ! -f "${src}" ]]; then
+    echo "[ERROR] 元 pak が見つかりませんでした。"
+    echo "       ${src}"
+    false
+  fi
+  echo "       検出: ${src}"
+  mkdir -p "$(dirname "${dst}")"
+  cp -f "${src}" "${dst}"
+  echo "       保存しました: ${dst}"
+}
+
+unpack_one() {
+  # args: pak output_dir
+  local pak="$1"
+  local out="$2"
+  if ! command -v "${REPAK_CMD}" >/dev/null 2>&1; then
+    echo "[ERROR] repak が見つかりません。先に [1/10] で取得してください。"
+    false
+  fi
+  if [[ ! -f "${pak}" ]]; then
+    echo "[ERROR] バックアップ pak がありません: ${pak}"
+    false
+  fi
+  mkdir -p "${out}"
+  "${REPAK_CMD}" unpack "${pak}" --output "${out}" --force
+  echo "       展開先: ${out}"
+}
+
+install_one() {
+  # args: src dst label
+  local src="$1"
+  local dst="$2"
+  local label="$3"
+  if [[ ! -f "${src}" ]]; then
+    echo "[ERROR] 配置する ${label} pak がありません: ${src}"
+    false
+  fi
+  if [[ ! -f "${dst}" ]]; then
+    echo "[ERROR] ゲーム側の ${label} pak が見つかりません（パスを確認してください）。"
+    echo "       ${dst}"
+    false
+  fi
+  cp -f "${src}" "${dst}"
+  echo "       配置先: ${dst}"
+}
+
 step_backup_original_pak() {
   echo ""
   echo "[2/10] ゲーム元 pak のバックアップ (3種) ..."
-  if [[ -f "${ORIGINAL_PAK}" ]]; then
-    echo "       既にバックアップがあります。再コピー・Backup の作り直しはしません。"
-    echo "       ${ORIGINAL_PAK}"
-  fi
-  if [[ ! -f "${ORIGINAL_PAK}" ]]; then
-    if [[ ! -f "${GAME_ORIGINAL_PAK}" ]]; then
-      echo "[ERROR] 元 pak が見つかりませんでした。"
-      echo "       ${GAME_ORIGINAL_PAK}"
-      false
-    fi
-    echo "       検出: ${GAME_ORIGINAL_PAK}"
-    mkdir -p "${ORIGINAL_PAK_DIR}"
-    cp -f "${GAME_ORIGINAL_PAK}" "${ORIGINAL_PAK}"
-    echo "       保存しました: ${ORIGINAL_PAK}"
-  fi
-
-  if [[ -f "${ORIGINAL_SODOR_CORE_PAK}" ]]; then
-    echo "       既にバックアップがあります。再コピー・Backup の作り直しはしません。"
-    echo "       ${ORIGINAL_SODOR_CORE_PAK}"
-  fi
-  if [[ ! -f "${ORIGINAL_SODOR_CORE_PAK}" ]]; then
-    if [[ ! -f "${GAME_ORIGINAL_CORE_PAK}" ]]; then
-      echo "[ERROR] 元 pak が見つかりませんでした。"
-      echo "       ${GAME_ORIGINAL_CORE_PAK}"
-      false
-    fi
-    echo "       検出: ${GAME_ORIGINAL_CORE_PAK}"
-    mkdir -p "${ORIGINAL_PAK_DIR}"
-    cp -f "${GAME_ORIGINAL_CORE_PAK}" "${ORIGINAL_SODOR_CORE_PAK}"
-    echo "       保存しました: ${ORIGINAL_SODOR_CORE_PAK}"
-  fi
-
-  if [[ -f "${ORIGINAL_JAMES_CORE_PAK}" ]]; then
-    echo "       既にバックアップがあります。再コピー・Backup の作り直しはしません。"
-    echo "       ${ORIGINAL_JAMES_CORE_PAK}"
-  fi
-  if [[ ! -f "${ORIGINAL_JAMES_CORE_PAK}" ]]; then
-    if [[ ! -f "${GAME_ORIGINAL_JAMES_CORE_PAK}" ]]; then
-      echo "[ERROR] 元 pak が見つかりませんでした。"
-      echo "       ${GAME_ORIGINAL_JAMES_CORE_PAK}"
-      false
-    fi
-    echo "       検出: ${GAME_ORIGINAL_JAMES_CORE_PAK}"
-    mkdir -p "${ORIGINAL_PAK_DIR}"
-    cp -f "${GAME_ORIGINAL_JAMES_CORE_PAK}" "${ORIGINAL_JAMES_CORE_PAK}"
-    echo "       保存しました: ${ORIGINAL_JAMES_CORE_PAK}"
-  fi
+  backup_one "${GAME_ORIGINAL_PAK}" "${ORIGINAL_PAK}"
+  backup_one "${GAME_ORIGINAL_CORE_PAK}" "${ORIGINAL_SODOR_CORE_PAK}"
+  backup_one "${GAME_ORIGINAL_JAMES_CORE_PAK}" "${ORIGINAL_JAMES_CORE_PAK}"
 }
 
 step_unpack_backup_pak() {
   echo ""
   echo "[3/10] バックアップ pak の展開 (3種) (repak unpack --output) ..."
-  if ! command -v "${REPAK_CMD}" >/dev/null 2>&1; then
-    echo "[ERROR] repak が見つかりません。先に [1/10] で取得してください。"
-    false
-  fi
-  if [[ ! -f "${ORIGINAL_PAK}" ]]; then
-    echo "[ERROR] バックアップ pak がありません: ${ORIGINAL_PAK}"
-    false
-  fi
-  mkdir -p "${UNPACK_OUTPUT_DIR}"
-  "${REPAK_CMD}" unpack "${ORIGINAL_PAK}" --output "${UNPACK_OUTPUT_DIR}" --force
-  echo "       展開先: ${UNPACK_OUTPUT_DIR}"
-
-  if [[ ! -f "${ORIGINAL_SODOR_CORE_PAK}" ]]; then
-    echo "[ERROR] バックアップ coredata pak がありません: ${ORIGINAL_SODOR_CORE_PAK}"
-    false
-  fi
-  mkdir -p "${UNPACK_CORE_OUTPUT_DIR}"
-  "${REPAK_CMD}" unpack "${ORIGINAL_SODOR_CORE_PAK}" --output "${UNPACK_CORE_OUTPUT_DIR}" --force
-  echo "       展開先: ${UNPACK_CORE_OUTPUT_DIR}"
-
-  if [[ ! -f "${ORIGINAL_JAMES_CORE_PAK}" ]]; then
-    echo "[ERROR] バックアップ James coredata pak がありません: ${ORIGINAL_JAMES_CORE_PAK}"
-    false
-  fi
-  mkdir -p "${UNPACK_JAMES_CORE_OUTPUT_DIR}"
-  "${REPAK_CMD}" unpack "${ORIGINAL_JAMES_CORE_PAK}" --output "${UNPACK_JAMES_CORE_OUTPUT_DIR}" --force
-  echo "       展開先: ${UNPACK_JAMES_CORE_OUTPUT_DIR}"
+  unpack_one "${ORIGINAL_PAK}" "${UNPACK_OUTPUT_DIR}"
+  unpack_one "${ORIGINAL_SODOR_CORE_PAK}" "${UNPACK_CORE_OUTPUT_DIR}"
+  unpack_one "${ORIGINAL_JAMES_CORE_PAK}" "${UNPACK_JAMES_CORE_OUTPUT_DIR}"
 }
 
 step_overlay_mod_to_ts2() {
@@ -338,41 +325,9 @@ step_verify_output() {
 step_install_to_game() {
   echo ""
   echo "[10/10] ゲームの pak を差し替え (3種) ..."
-  if [[ ! -f "${OUTPUT_PAK}" ]]; then
-    echo "[ERROR] 配置する pak がありません: ${OUTPUT_PAK}"
-    false
-  fi
-  if [[ ! -f "${GAME_ORIGINAL_PAK}" ]]; then
-    echo "[ERROR] ゲーム側の TS2Prototype-WindowsNoEditor.pak が見つかりません（パスを確認してください）。"
-    echo "       ${GAME_ORIGINAL_PAK}"
-    false
-  fi
-  cp -f "${OUTPUT_PAK}" "${GAME_ORIGINAL_PAK}"
-  echo "       配置先: ${GAME_ORIGINAL_PAK}"
-
-  if [[ ! -f "${OUTPUT_CORE_PAK}" ]]; then
-    echo "[ERROR] 配置する coredata pak がありません: ${OUTPUT_CORE_PAK}"
-    false
-  fi
-  if [[ ! -f "${GAME_ORIGINAL_CORE_PAK}" ]]; then
-    echo "[ERROR] ゲーム側の TS2Prototype-WindowsNoEditor-Sodor-coredata.pak が見つかりません（パスを確認してください）。"
-    echo "       ${GAME_ORIGINAL_CORE_PAK}"
-    false
-  fi
-  cp -f "${OUTPUT_CORE_PAK}" "${GAME_ORIGINAL_CORE_PAK}"
-  echo "       配置先: ${GAME_ORIGINAL_CORE_PAK}"
-
-  if [[ ! -f "${OUTPUT_JAMES_CORE_PAK}" ]]; then
-    echo "[ERROR] 配置する James coredata pak がありません: ${OUTPUT_JAMES_CORE_PAK}"
-    false
-  fi
-  if [[ ! -f "${GAME_ORIGINAL_JAMES_CORE_PAK}" ]]; then
-    echo "[ERROR] ゲーム側の TS2Prototype-WindowsNoEditor-James-coredata.pak が見つかりません（パスを確認してください）。"
-    echo "       ${GAME_ORIGINAL_JAMES_CORE_PAK}"
-    false
-  fi
-  cp -f "${OUTPUT_JAMES_CORE_PAK}" "${GAME_ORIGINAL_JAMES_CORE_PAK}"
-  echo "       配置先: ${GAME_ORIGINAL_JAMES_CORE_PAK}"
+  install_one "${OUTPUT_PAK}" "${GAME_ORIGINAL_PAK}" "TS2Prototype-WindowsNoEditor"
+  install_one "${OUTPUT_CORE_PAK}" "${GAME_ORIGINAL_CORE_PAK}" "TS2Prototype-WindowsNoEditor-Sodor-coredata"
+  install_one "${OUTPUT_JAMES_CORE_PAK}" "${GAME_ORIGINAL_JAMES_CORE_PAK}" "TS2Prototype-WindowsNoEditor-James-coredata"
 }
 
 step_cleanup_work() {

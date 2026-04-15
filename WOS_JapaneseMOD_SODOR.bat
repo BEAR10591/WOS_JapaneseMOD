@@ -72,51 +72,67 @@ if "%SKIP_REPAK_CHECK%"=="0" (
 )
 
 rem --- Steps ---------------------------------------------------------------
+set "CURRENT_STEP=STEP_DOWNLOAD_REPAK"
 call :STEP_DOWNLOAD_REPAK
 if errorlevel 1 goto :FAILED
 
+set "CURRENT_STEP=STEP_MIGRATE_V010_BACKUP"
 call :STEP_MIGRATE_V010_BACKUP
 if errorlevel 1 goto :FAILED
 
+set "CURRENT_STEP=STEP_BACKUP_ORIGINAL_PAK"
 call :STEP_BACKUP_ORIGINAL_PAK
 if errorlevel 1 goto :FAILED
 
+set "CURRENT_STEP=STEP_BACKUP_ORIGINAL_CORE_PAK"
 call :STEP_BACKUP_ORIGINAL_CORE_PAK
 if errorlevel 1 goto :FAILED
 
+set "CURRENT_STEP=STEP_BACKUP_ORIGINAL_JAMES_CORE_PAK"
 call :STEP_BACKUP_ORIGINAL_JAMES_CORE_PAK
 if errorlevel 1 goto :FAILED
 
+set "CURRENT_STEP=STEP_UNPACK_BACKUP_PAK"
 call :STEP_UNPACK_BACKUP_PAK
 if errorlevel 1 goto :FAILED
 
+set "CURRENT_STEP=STEP_UNPACK_BACKUP_CORE_PAK"
 call :STEP_UNPACK_BACKUP_CORE_PAK
 if errorlevel 1 goto :FAILED
 
+set "CURRENT_STEP=STEP_UNPACK_BACKUP_JAMES_CORE_PAK"
 call :STEP_UNPACK_BACKUP_JAMES_CORE_PAK
 if errorlevel 1 goto :FAILED
 
+set "CURRENT_STEP=STEP_OVERLAY_MOD_TO_TS2"
 call :STEP_OVERLAY_MOD_TO_TS2
 if errorlevel 1 goto :FAILED
 
+set "CURRENT_STEP=STEP_PREPARE_STAGING"
 call :STEP_PREPARE_STAGING
 if errorlevel 1 goto :FAILED
 
+set "CURRENT_STEP=STEP_COPY_OR_GENERATE_FONT_ASSETS"
 call :STEP_COPY_OR_GENERATE_FONT_ASSETS
 if errorlevel 1 goto :FAILED
 
+set "CURRENT_STEP=STEP_BUILD_RESPONSE_FILE"
 call :STEP_BUILD_RESPONSE_FILE
 if errorlevel 1 goto :FAILED
 
+set "CURRENT_STEP=STEP_RUN_REPAK_PACK"
 call :STEP_RUN_REPAK_PACK
 if errorlevel 1 goto :FAILED
 
+set "CURRENT_STEP=STEP_VERIFY_OUTPUT"
 call :STEP_VERIFY_OUTPUT
 if errorlevel 1 goto :FAILED
 
+set "CURRENT_STEP=STEP_INSTALL_TO_GAME"
 call :STEP_INSTALL_TO_GAME
 if errorlevel 1 goto :FAILED
 
+set "CURRENT_STEP=STEP_CLEANUP_WORK"
 call :STEP_CLEANUP_WORK
 if errorlevel 1 goto :FAILED
 
@@ -126,7 +142,8 @@ exit /b 0
 
 :FAILED
 echo.
-echo [FAILED] 上記のエラーを修正してから再実行してください。
+  echo [FAILED] 上記のエラーを修正してから再実行してください。
+  if defined CURRENT_STEP echo        失敗ステップ: %CURRENT_STEP%
 exit /b 1
 
 rem =============================================================================
@@ -293,76 +310,46 @@ rem
 :STEP_UNPACK_BACKUP_PAK
   echo.
   echo [3/10] バックアップ pak の展開 (3種) ^(repak unpack --output^) ...
-  if not exist "%REPAK_EXE%" (
-    echo [ERROR] repak が見つかりません。先に [1/10] で取得してください: "%REPAK_EXE%"
-    exit /b 1
-  )
-  if not exist "%ORIGINAL_PAK%" (
-    echo [ERROR] バックアップ pak がありません: "%ORIGINAL_PAK%"
-    exit /b 1
-  )
-  if not exist "%UNPACK_OUTPUT_DIR%\" mkdir "%UNPACK_OUTPUT_DIR%"
-  "%REPAK_EXE%" unpack "%ORIGINAL_PAK%" --output "%UNPACK_OUTPUT_DIR%" --force
-  set "REPAK_RC=%ERRORLEVEL%"
-  if not "%REPAK_RC%"=="0" (
-    if exist "%UNPACK_OUTPUT_DIR%\TS2Prototype\" (
-      echo [WARN] repak の終了コードが 0 ではありませんが、展開結果が見つかったため続行します: %REPAK_RC%
-    ) else (
-      echo [ERROR] repak unpack に失敗しました: %REPAK_RC%
-      exit /b 1
-    )
-  )
-  echo        展開先: "%UNPACK_OUTPUT_DIR%"
-  exit /b 0
+  call :_UNPACK_ONE "%ORIGINAL_PAK%" "%UNPACK_OUTPUT_DIR%" "main pak"
+  exit /b %ERRORLEVEL%
 
 :STEP_UNPACK_BACKUP_CORE_PAK
   echo.
   echo [3/10] バックアップ coredata pak の展開 ^(repak unpack --output^) ...
-  if not exist "%REPAK_EXE%" (
-    echo [ERROR] repak が見つかりません。先に [1/10] で取得してください: "%REPAK_EXE%"
-    exit /b 1
-  )
-  if not exist "%ORIGINAL_SODOR_CORE_PAK%" (
-    echo [ERROR] バックアップ coredata pak がありません: "%ORIGINAL_SODOR_CORE_PAK%"
-    exit /b 1
-  )
-  if not exist "%UNPACK_CORE_OUTPUT_DIR%\" mkdir "%UNPACK_CORE_OUTPUT_DIR%"
-  "%REPAK_EXE%" unpack "%ORIGINAL_SODOR_CORE_PAK%" --output "%UNPACK_CORE_OUTPUT_DIR%" --force
-  set "REPAK_RC=%ERRORLEVEL%"
-  if not "%REPAK_RC%"=="0" (
-    if exist "%UNPACK_CORE_OUTPUT_DIR%\TS2Prototype\" (
-      echo [WARN] repak の終了コードが 0 ではありませんが、展開結果が見つかったため続行します: %REPAK_RC%
-    ) else (
-      echo [ERROR] repak unpack (coredata) に失敗しました: %REPAK_RC%
-      exit /b 1
-    )
-  )
-  echo        展開先: "%UNPACK_CORE_OUTPUT_DIR%"
-  exit /b 0
+  call :_UNPACK_ONE "%ORIGINAL_SODOR_CORE_PAK%" "%UNPACK_CORE_OUTPUT_DIR%" "Sodor coredata"
+  exit /b %ERRORLEVEL%
 
 :STEP_UNPACK_BACKUP_JAMES_CORE_PAK
   echo.
   echo [3/10] バックアップ James coredata pak の展開 ^(repak unpack --output^) ...
+  call :_UNPACK_ONE "%ORIGINAL_JAMES_CORE_PAK%" "%UNPACK_JAMES_CORE_OUTPUT_DIR%" "James coredata"
+  exit /b %ERRORLEVEL%
+
+::_UNPACK_ONE
+  rem args: %~1=pak path, %~2=output dir, %~3=label
+  set "PAK_PATH=%~1"
+  set "OUT_DIR=%~2"
+  set "UNPACK_LABEL=%~3"
   if not exist "%REPAK_EXE%" (
     echo [ERROR] repak が見つかりません。先に [1/10] で取得してください: "%REPAK_EXE%"
     exit /b 1
   )
-  if not exist "%ORIGINAL_JAMES_CORE_PAK%" (
-    echo [ERROR] バックアップ James coredata pak がありません: "%ORIGINAL_JAMES_CORE_PAK%"
+  if not exist "%PAK_PATH%" (
+    echo [ERROR] バックアップ pak がありません: "%PAK_PATH%"
     exit /b 1
   )
-  if not exist "%UNPACK_JAMES_CORE_OUTPUT_DIR%\" mkdir "%UNPACK_JAMES_CORE_OUTPUT_DIR%"
-  "%REPAK_EXE%" unpack "%ORIGINAL_JAMES_CORE_PAK%" --output "%UNPACK_JAMES_CORE_OUTPUT_DIR%" --force
+  if not exist "%OUT_DIR%\" mkdir "%OUT_DIR%"
+  "%REPAK_EXE%" unpack "%PAK_PATH%" --output "%OUT_DIR%" --force
   set "REPAK_RC=%ERRORLEVEL%"
   if not "%REPAK_RC%"=="0" (
-    if exist "%UNPACK_JAMES_CORE_OUTPUT_DIR%\TS2Prototype\" (
-      echo [WARN] repak の終了コードが 0 ではありませんが、展開結果が見つかったため続行します: %REPAK_RC%
+    if exist "%OUT_DIR%\TS2Prototype\" (
+      echo [WARN] repak の終了コードが 0 ではありませんが、展開結果が見つかったため続行します (%UNPACK_LABEL%): %REPAK_RC%
     ) else (
-      echo [ERROR] repak unpack (James coredata) に失敗しました: %REPAK_RC%
+      echo [ERROR] repak unpack に失敗しました (%UNPACK_LABEL%): %REPAK_RC%
       exit /b 1
     )
   )
-  echo        展開先: "%UNPACK_JAMES_CORE_OUTPUT_DIR%"
+  echo        展開先: "%OUT_DIR%"
   exit /b 0
 
 :STEP_OVERLAY_MOD_TO_TS2
