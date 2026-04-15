@@ -302,12 +302,15 @@ rem
     exit /b 1
   )
   if not exist "%UNPACK_OUTPUT_DIR%\" mkdir "%UNPACK_OUTPUT_DIR%"
-  set "REPAK_LOG=%PACK_WORK_ROOT%\repak_unpack_main.log"
-  "%REPAK_EXE%" unpack "%ORIGINAL_PAK%" --output "%UNPACK_OUTPUT_DIR%" --force >"%REPAK_LOG%" 2>&1
-  if errorlevel 1 (
-    echo [ERROR] repak unpack に失敗しました。
-    echo        ログ: "%REPAK_LOG%"
-    exit /b 1
+  "%REPAK_EXE%" unpack "%ORIGINAL_PAK%" --output "%UNPACK_OUTPUT_DIR%" --force
+  set "REPAK_RC=%ERRORLEVEL%"
+  if not "%REPAK_RC%"=="0" (
+    if exist "%UNPACK_OUTPUT_DIR%\TS2Prototype\" (
+      echo [WARN] repak の終了コードが 0 ではありませんが、展開結果が見つかったため続行します: %REPAK_RC%
+    ) else (
+      echo [ERROR] repak unpack に失敗しました: %REPAK_RC%
+      exit /b 1
+    )
   )
   echo        展開先: "%UNPACK_OUTPUT_DIR%"
   exit /b 0
@@ -324,12 +327,15 @@ rem
     exit /b 1
   )
   if not exist "%UNPACK_CORE_OUTPUT_DIR%\" mkdir "%UNPACK_CORE_OUTPUT_DIR%"
-  set "REPAK_LOG=%PACK_WORK_ROOT%\repak_unpack_sodor_coredata.log"
-  "%REPAK_EXE%" unpack "%ORIGINAL_SODOR_CORE_PAK%" --output "%UNPACK_CORE_OUTPUT_DIR%" --force >"%REPAK_LOG%" 2>&1
-  if errorlevel 1 (
-    echo [ERROR] repak unpack (coredata) に失敗しました。
-    echo        ログ: "%REPAK_LOG%"
-    exit /b 1
+  "%REPAK_EXE%" unpack "%ORIGINAL_SODOR_CORE_PAK%" --output "%UNPACK_CORE_OUTPUT_DIR%" --force
+  set "REPAK_RC=%ERRORLEVEL%"
+  if not "%REPAK_RC%"=="0" (
+    if exist "%UNPACK_CORE_OUTPUT_DIR%\TS2Prototype\" (
+      echo [WARN] repak の終了コードが 0 ではありませんが、展開結果が見つかったため続行します: %REPAK_RC%
+    ) else (
+      echo [ERROR] repak unpack (coredata) に失敗しました: %REPAK_RC%
+      exit /b 1
+    )
   )
   echo        展開先: "%UNPACK_CORE_OUTPUT_DIR%"
   exit /b 0
@@ -346,12 +352,15 @@ rem
     exit /b 1
   )
   if not exist "%UNPACK_JAMES_CORE_OUTPUT_DIR%\" mkdir "%UNPACK_JAMES_CORE_OUTPUT_DIR%"
-  set "REPAK_LOG=%PACK_WORK_ROOT%\repak_unpack_james_coredata.log"
-  "%REPAK_EXE%" unpack "%ORIGINAL_JAMES_CORE_PAK%" --output "%UNPACK_JAMES_CORE_OUTPUT_DIR%" --force >"%REPAK_LOG%" 2>&1
-  if errorlevel 1 (
-    echo [ERROR] repak unpack (James coredata) に失敗しました。
-    echo        ログ: "%REPAK_LOG%"
-    exit /b 1
+  "%REPAK_EXE%" unpack "%ORIGINAL_JAMES_CORE_PAK%" --output "%UNPACK_JAMES_CORE_OUTPUT_DIR%" --force
+  set "REPAK_RC=%ERRORLEVEL%"
+  if not "%REPAK_RC%"=="0" (
+    if exist "%UNPACK_JAMES_CORE_OUTPUT_DIR%\TS2Prototype\" (
+      echo [WARN] repak の終了コードが 0 ではありませんが、展開結果が見つかったため続行します: %REPAK_RC%
+    ) else (
+      echo [ERROR] repak unpack (James coredata) に失敗しました: %REPAK_RC%
+      exit /b 1
+    )
   )
   echo        展開先: "%UNPACK_JAMES_CORE_OUTPUT_DIR%"
   exit /b 0
