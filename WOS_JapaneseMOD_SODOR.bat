@@ -279,10 +279,9 @@ rem
     exit /b 1
   )
 :FOUND_GAME_PAK
-  if defined GAME_INSTALL_PAK_DIR (
-    set "GAME_INSTALL_CORE_PAK=%GAME_INSTALL_PAK_DIR%TS2Prototype-WindowsNoEditor-Sodor-coredata.pak"
-    set "GAME_INSTALL_JAMES_CORE_PAK=%GAME_INSTALL_PAK_DIR%TS2Prototype-WindowsNoEditor-James-coredata.pak"
-  )
+  if not defined GAME_INSTALL_PAK_DIR exit /b 1
+  set "GAME_INSTALL_CORE_PAK=%GAME_INSTALL_PAK_DIR%TS2Prototype-WindowsNoEditor-Sodor-coredata.pak"
+  set "GAME_INSTALL_JAMES_CORE_PAK=%GAME_INSTALL_PAK_DIR%TS2Prototype-WindowsNoEditor-James-coredata.pak"
   if not exist "%GAME_INSTALL_CORE_PAK%" goto :ERR_MISSING_GAME_CORE_PAK
   if not exist "%GAME_INSTALL_JAMES_CORE_PAK%" goto :ERR_MISSING_GAME_JAMES_CORE_PAK
   exit /b 0
