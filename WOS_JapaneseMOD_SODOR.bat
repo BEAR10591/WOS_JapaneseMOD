@@ -302,9 +302,11 @@ rem
     exit /b 1
   )
   if not exist "%UNPACK_OUTPUT_DIR%\" mkdir "%UNPACK_OUTPUT_DIR%"
-  "%REPAK_EXE%" unpack "%ORIGINAL_PAK%" --output "%UNPACK_OUTPUT_DIR%" --force
+  set "REPAK_LOG=%PACK_WORK_ROOT%\repak_unpack_main.log"
+  "%REPAK_EXE%" unpack "%ORIGINAL_PAK%" --output "%UNPACK_OUTPUT_DIR%" --force >"%REPAK_LOG%" 2>&1
   if errorlevel 1 (
     echo [ERROR] repak unpack に失敗しました。
+    echo        ログ: "%REPAK_LOG%"
     exit /b 1
   )
   echo        展開先: "%UNPACK_OUTPUT_DIR%"
@@ -322,9 +324,11 @@ rem
     exit /b 1
   )
   if not exist "%UNPACK_CORE_OUTPUT_DIR%\" mkdir "%UNPACK_CORE_OUTPUT_DIR%"
-  "%REPAK_EXE%" unpack "%ORIGINAL_SODOR_CORE_PAK%" --output "%UNPACK_CORE_OUTPUT_DIR%" --force
+  set "REPAK_LOG=%PACK_WORK_ROOT%\repak_unpack_sodor_coredata.log"
+  "%REPAK_EXE%" unpack "%ORIGINAL_SODOR_CORE_PAK%" --output "%UNPACK_CORE_OUTPUT_DIR%" --force >"%REPAK_LOG%" 2>&1
   if errorlevel 1 (
     echo [ERROR] repak unpack (coredata) に失敗しました。
+    echo        ログ: "%REPAK_LOG%"
     exit /b 1
   )
   echo        展開先: "%UNPACK_CORE_OUTPUT_DIR%"
@@ -342,9 +346,11 @@ rem
     exit /b 1
   )
   if not exist "%UNPACK_JAMES_CORE_OUTPUT_DIR%\" mkdir "%UNPACK_JAMES_CORE_OUTPUT_DIR%"
-  "%REPAK_EXE%" unpack "%ORIGINAL_JAMES_CORE_PAK%" --output "%UNPACK_JAMES_CORE_OUTPUT_DIR%" --force
+  set "REPAK_LOG=%PACK_WORK_ROOT%\repak_unpack_james_coredata.log"
+  "%REPAK_EXE%" unpack "%ORIGINAL_JAMES_CORE_PAK%" --output "%UNPACK_JAMES_CORE_OUTPUT_DIR%" --force >"%REPAK_LOG%" 2>&1
   if errorlevel 1 (
     echo [ERROR] repak unpack (James coredata) に失敗しました。
+    echo        ログ: "%REPAK_LOG%"
     exit /b 1
   )
   echo        展開先: "%UNPACK_JAMES_CORE_OUTPUT_DIR%"
