@@ -272,12 +272,7 @@ rem
     set "GAME_INSTALL_PAK_DIR=%%~dpP"
     goto :FOUND_GAME_PAK
   )
-  if not defined GAME_INSTALL_PAK (
-    echo [ERROR] ゲーム側の TS2Prototype-WindowsNoEditor.pak が見つかりません（Steam のインストール先を確認してください）。
-    echo        "C:\Program Files (x86)\Steam\steamapps\common\Thomas & Friends™ Wonders of Sodor\WindowsNoEditor\TS2Prototype\Content\Paks\TS2Prototype-WindowsNoEditor.pak"
-    echo        "C:\Program Files\Steam\steamapps\common\Thomas & Friends™ Wonders of Sodor\WindowsNoEditor\TS2Prototype\Content\Paks\TS2Prototype-WindowsNoEditor.pak"
-    exit /b 1
-  )
+  if not defined GAME_INSTALL_PAK goto :ERR_MISSING_GAME_MAIN_PAK
 :FOUND_GAME_PAK
   if not defined GAME_INSTALL_PAK_DIR exit /b 1
   set "GAME_INSTALL_CORE_PAK=%GAME_INSTALL_PAK_DIR%TS2Prototype-WindowsNoEditor-Sodor-coredata.pak"
@@ -285,6 +280,12 @@ rem
   if not exist "%GAME_INSTALL_CORE_PAK%" goto :ERR_MISSING_GAME_CORE_PAK
   if not exist "%GAME_INSTALL_JAMES_CORE_PAK%" goto :ERR_MISSING_GAME_JAMES_CORE_PAK
   exit /b 0
+
+::ERR_MISSING_GAME_MAIN_PAK
+  echo [ERROR] ゲーム側の TS2Prototype-WindowsNoEditor.pak が見つかりません（Steam のインストール先を確認してください）。
+  echo        "C:\Program Files (x86)\Steam\steamapps\common\Thomas & Friends™ Wonders of Sodor\WindowsNoEditor\TS2Prototype\Content\Paks\TS2Prototype-WindowsNoEditor.pak"
+  echo        "C:\Program Files\Steam\steamapps\common\Thomas & Friends™ Wonders of Sodor\WindowsNoEditor\TS2Prototype\Content\Paks\TS2Prototype-WindowsNoEditor.pak"
+  exit /b 1
 
 :ERR_MISSING_GAME_CORE_PAK
   echo [ERROR] ゲーム側の TS2Prototype-WindowsNoEditor-Sodor-coredata.pak が見つかりません（Steam のインストール先を確認してください）。
