@@ -567,7 +567,7 @@ rem
   )
   exit /b 0
 
-::STEP_MIGRATE_V010_BACKUP
+:STEP_MIGRATE_V010_BACKUP
   echo.
   echo [migrate] v0.1.0 の Backup を v0.1.1 の保存先へ移行 ...
   set "OLD_BACKUP_DIR=%REPO_ROOT%Backup"
@@ -583,7 +583,7 @@ rem
   rmdir "%OLD_BACKUP_DIR%" >nul 2>&1
   exit /b 0
 
-::_MIGRATE_ONE
+:_MIGRATE_ONE
   set "SRC=%~1"
   set "DST=%~2"
   if exist "%SRC%" (
