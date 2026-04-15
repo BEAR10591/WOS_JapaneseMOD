@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-setlocal EnableExtensions EnableDelayedExpansion
+setlocal EnableExtensions
 
 rem =============================================================================
 rem  Build TS2Prototype-WindowsNoEditor.pak (Windows) - SODOR
