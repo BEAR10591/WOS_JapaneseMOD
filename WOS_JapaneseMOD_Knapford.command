@@ -27,24 +27,36 @@ STAGING_DIR="${TMPDIR:-/tmp}/wos_font_pak_staging"
 # game pak path (Sikarugir Steam.app prefix)
 # ${HOME} = current user's home directory
 GAME_ORIGINAL_PAK="${HOME}/Applications/Sikarugir/Steam.app/Contents/SharedSupport/prefix/drive_c/Program Files (x86)/Steam/steamapps/common/Thomas & Friends™ Wonders of Sodor/WindowsNoEditor/TS2Prototype/Content/Paks/TS2Prototype-WindowsNoEditor.pak"
+GAME_ORIGINAL_CORE_PAK="${HOME}/Applications/Sikarugir/Steam.app/Contents/SharedSupport/prefix/drive_c/Program Files (x86)/Steam/steamapps/common/Thomas & Friends™ Wonders of Sodor/WindowsNoEditor/TS2Prototype/Content/Paks/TS2Prototype-WindowsNoEditor-Sodor-coredata.pak"
+GAME_ORIGINAL_JAMES_CORE_PAK="${HOME}/Applications/Sikarugir/Steam.app/Contents/SharedSupport/prefix/drive_c/Program Files (x86)/Steam/steamapps/common/Thomas & Friends™ Wonders of Sodor/WindowsNoEditor/TS2Prototype/Content/Paks/TS2Prototype-WindowsNoEditor-James-coredata.pak"
 
-# backup location
-BACKUP_DIR="${REPO_ROOT}/Backup"
-BACKUP_PAK="${BACKUP_DIR}/TS2Prototype-WindowsNoEditor.pak"
+# original pak storage location (fixed per-user backup dir)
+ORIGINAL_PAK_DIR="${HOME}/Library/Application Support/WOS_JapaneseMOD/Backup"
+ORIGINAL_PAK="${ORIGINAL_PAK_DIR}/TS2Prototype-WindowsNoEditor.pak"
+ORIGINAL_SODOR_CORE_PAK="${ORIGINAL_PAK_DIR}/TS2Prototype-WindowsNoEditor-Sodor-coredata.pak"
+ORIGINAL_JAMES_CORE_PAK="${ORIGINAL_PAK_DIR}/TS2Prototype-WindowsNoEditor-James-coredata.pak"
 
 # work root (deleted on success when cleanup enabled)
 PACK_WORK_ROOT="${REPO_ROOT}/WOS_pack_work_Knapford"
 
 # repak unpack --output directory
 UNPACK_OUTPUT_DIR="${PACK_WORK_ROOT}/TS2Prototype-WindowsNoEditor"
+UNPACK_CORE_OUTPUT_DIR="${PACK_WORK_ROOT}/TS2Prototype-WindowsNoEditor-Sodor-coredata"
+UNPACK_JAMES_CORE_OUTPUT_DIR="${PACK_WORK_ROOT}/TS2Prototype-WindowsNoEditor-James-coredata"
 
 # pack input directory (same as unpack output)
 TS2_UNPACKED_DIR="${UNPACK_OUTPUT_DIR}"
+TS2_CORE_UNPACKED_DIR="${UNPACK_CORE_OUTPUT_DIR}"
+TS2_JAMES_CORE_UNPACKED_DIR="${UNPACK_JAMES_CORE_OUTPUT_DIR}"
 
 # repak pack output pak path (next to unpack dir)
 OUTPUT_PAK="${PACK_WORK_ROOT}/TS2Prototype-WindowsNoEditor.pak"
+OUTPUT_CORE_PAK="${PACK_WORK_ROOT}/TS2Prototype-WindowsNoEditor-Sodor-coredata.pak"
+OUTPUT_JAMES_CORE_PAK="${PACK_WORK_ROOT}/TS2Prototype-WindowsNoEditor-James-coredata.pak"
 
-MOD_OVERLAY_DIR="${REPO_ROOT}/WOS_JapaneseMOD_Knapford"
+MOD_OVERLAY_DIR="${REPO_ROOT}/WOS_JapaneseMOD_Knapford/TS2Prototype-WindowsNoEditor"
+MOD_OVERLAY_SODOR_CORE_DIR="${REPO_ROOT}/WOS_JapaneseMOD_Knapford/TS2Prototype-WindowsNoEditor-Sodor-coredata"
+MOD_OVERLAY_JAMES_CORE_DIR="${REPO_ROOT}/WOS_JapaneseMOD_Knapford/TS2Prototype-WindowsNoEditor-James-coredata"
 
 # 1=skip early repak check / 0=require repak before steps
 SKIP_REPAK_CHECK="${SKIP_REPAK_CHECK:-1}"
@@ -80,44 +92,129 @@ step_download_repak() {
   echo "       配置完了: $(command -v "${REPAK_CMD}")"
 }
 
-step_backup_original_pak() {
+step_migrate_v010_backup() {
   echo ""
-  echo "[2/10] ゲーム元 pak のバックアップ ..."
-  if [[ -f "${BACKUP_PAK}" ]]; then
-    echo "       既にバックアップがあります。再コピー・Backup の作り直しはしません。"
-    echo "       ${BACKUP_PAK}"
+  echo "[migrate] v0.1.0 の Backup を v0.1.1 の保存先へ移行 ..."
+  local old_dir="${REPO_ROOT}/Backup"
+  local new_dir="${ORIGINAL_PAK_DIR}"
+  if [[ ! -d "${old_dir}" ]]; then
     return 0
   fi
-  if [[ ! -f "${GAME_ORIGINAL_PAK}" ]]; then
-    echo "[ERROR] 元 pak が見つかりませんでした。"
-    echo "       ${GAME_ORIGINAL_PAK}"
-    false
+  mkdir -p "${new_dir}"
+
+  local moved=0
+  for name in \
+    "TS2Prototype-WindowsNoEditor.pak" \
+    "TS2Prototype-WindowsNoEditor-Sodor-coredata.pak" \
+    "TS2Prototype-WindowsNoEditor-James-coredata.pak"
+  do
+    local src="${old_dir}/${name}"
+    local dst="${new_dir}/${name}"
+    if [[ -f "${src}" ]]; then
+      if [[ ! -f "${dst}" ]]; then
+        echo "       移動: ${src}"
+        echo "         -> ${dst}"
+        mv -f "${src}" "${dst}"
+        moved=$((moved + 1))
+      else
+        echo "       既に新しいバックアップがあります。旧を保持します: ${dst}"
+      fi
+    fi
+  done
+
+  rmdir "${old_dir}" >/dev/null 2>&1 || true
+  if [[ "${moved}" -gt 0 ]]; then
+    echo "       移行しました: ${moved} ファイル"
   fi
-  echo "       検出: ${GAME_ORIGINAL_PAK}"
-  mkdir -p "${BACKUP_DIR}"
-  cp -f "${GAME_ORIGINAL_PAK}" "${BACKUP_PAK}"
-  echo "       保存しました: ${BACKUP_PAK}"
+}
+
+step_backup_original_pak() {
+  echo ""
+  echo "[2/10] ゲーム元 pak のバックアップ (3種) ..."
+  if [[ -f "${ORIGINAL_PAK}" ]]; then
+    echo "       既にバックアップがあります。再コピー・Backup の作り直しはしません。"
+    echo "       ${ORIGINAL_PAK}"
+  fi
+  if [[ ! -f "${ORIGINAL_PAK}" ]]; then
+    if [[ ! -f "${GAME_ORIGINAL_PAK}" ]]; then
+      echo "[ERROR] 元 pak が見つかりませんでした。"
+      echo "       ${GAME_ORIGINAL_PAK}"
+      false
+    fi
+    echo "       検出: ${GAME_ORIGINAL_PAK}"
+    mkdir -p "${ORIGINAL_PAK_DIR}"
+    cp -f "${GAME_ORIGINAL_PAK}" "${ORIGINAL_PAK}"
+    echo "       保存しました: ${ORIGINAL_PAK}"
+  fi
+
+  if [[ -f "${ORIGINAL_SODOR_CORE_PAK}" ]]; then
+    echo "       既にバックアップがあります。再コピー・Backup の作り直しはしません。"
+    echo "       ${ORIGINAL_SODOR_CORE_PAK}"
+  fi
+  if [[ ! -f "${ORIGINAL_SODOR_CORE_PAK}" ]]; then
+    if [[ ! -f "${GAME_ORIGINAL_CORE_PAK}" ]]; then
+      echo "[ERROR] 元 pak が見つかりませんでした。"
+      echo "       ${GAME_ORIGINAL_CORE_PAK}"
+      false
+    fi
+    echo "       検出: ${GAME_ORIGINAL_CORE_PAK}"
+    mkdir -p "${ORIGINAL_PAK_DIR}"
+    cp -f "${GAME_ORIGINAL_CORE_PAK}" "${ORIGINAL_SODOR_CORE_PAK}"
+    echo "       保存しました: ${ORIGINAL_SODOR_CORE_PAK}"
+  fi
+
+  if [[ -f "${ORIGINAL_JAMES_CORE_PAK}" ]]; then
+    echo "       既にバックアップがあります。再コピー・Backup の作り直しはしません。"
+    echo "       ${ORIGINAL_JAMES_CORE_PAK}"
+  fi
+  if [[ ! -f "${ORIGINAL_JAMES_CORE_PAK}" ]]; then
+    if [[ ! -f "${GAME_ORIGINAL_JAMES_CORE_PAK}" ]]; then
+      echo "[ERROR] 元 pak が見つかりませんでした。"
+      echo "       ${GAME_ORIGINAL_JAMES_CORE_PAK}"
+      false
+    fi
+    echo "       検出: ${GAME_ORIGINAL_JAMES_CORE_PAK}"
+    mkdir -p "${ORIGINAL_PAK_DIR}"
+    cp -f "${GAME_ORIGINAL_JAMES_CORE_PAK}" "${ORIGINAL_JAMES_CORE_PAK}"
+    echo "       保存しました: ${ORIGINAL_JAMES_CORE_PAK}"
+  fi
 }
 
 step_unpack_backup_pak() {
   echo ""
-  echo "[3/10] バックアップ pak の展開 (repak unpack --output) ..."
+  echo "[3/10] バックアップ pak の展開 (3種) (repak unpack --output) ..."
   if ! command -v "${REPAK_CMD}" >/dev/null 2>&1; then
     echo "[ERROR] repak が見つかりません。先に [1/10] で取得してください。"
     false
   fi
-  if [[ ! -f "${BACKUP_PAK}" ]]; then
-    echo "[ERROR] バックアップ pak がありません: ${BACKUP_PAK}"
+  if [[ ! -f "${ORIGINAL_PAK}" ]]; then
+    echo "[ERROR] バックアップ pak がありません: ${ORIGINAL_PAK}"
     false
   fi
   mkdir -p "${UNPACK_OUTPUT_DIR}"
-  "${REPAK_CMD}" unpack "${BACKUP_PAK}" --output "${UNPACK_OUTPUT_DIR}" --force
+  "${REPAK_CMD}" unpack "${ORIGINAL_PAK}" --output "${UNPACK_OUTPUT_DIR}" --force
   echo "       展開先: ${UNPACK_OUTPUT_DIR}"
+
+  if [[ ! -f "${ORIGINAL_SODOR_CORE_PAK}" ]]; then
+    echo "[ERROR] バックアップ coredata pak がありません: ${ORIGINAL_SODOR_CORE_PAK}"
+    false
+  fi
+  mkdir -p "${UNPACK_CORE_OUTPUT_DIR}"
+  "${REPAK_CMD}" unpack "${ORIGINAL_SODOR_CORE_PAK}" --output "${UNPACK_CORE_OUTPUT_DIR}" --force
+  echo "       展開先: ${UNPACK_CORE_OUTPUT_DIR}"
+
+  if [[ ! -f "${ORIGINAL_JAMES_CORE_PAK}" ]]; then
+    echo "[ERROR] バックアップ James coredata pak がありません: ${ORIGINAL_JAMES_CORE_PAK}"
+    false
+  fi
+  mkdir -p "${UNPACK_JAMES_CORE_OUTPUT_DIR}"
+  "${REPAK_CMD}" unpack "${ORIGINAL_JAMES_CORE_PAK}" --output "${UNPACK_JAMES_CORE_OUTPUT_DIR}" --force
+  echo "       展開先: ${UNPACK_JAMES_CORE_OUTPUT_DIR}"
 }
 
 step_overlay_mod_to_ts2() {
   echo ""
-  echo "[4/10] WOS_JapaneseMOD_Knapford を TS2Prototype-WindowsNoEditor に上書きコピー ..."
+  echo "[4/10] WOS_JapaneseMOD_Knapford を pak 展開先 (3種) に上書きコピー ..."
   if [[ ! -d "${MOD_OVERLAY_DIR}" ]]; then
     echo "[ERROR] 差し替え元フォルダがありません: ${MOD_OVERLAY_DIR}"
     false
@@ -126,8 +223,49 @@ step_overlay_mod_to_ts2() {
     echo "[ERROR] unpack 済みの TS2Prototype-WindowsNoEditor がありません: ${TS2_UNPACKED_DIR}"
     false
   fi
+  if [[ ! -d "${TS2_CORE_UNPACKED_DIR}" ]]; then
+    echo "[ERROR] unpack 済みの TS2Prototype-WindowsNoEditor-Sodor-coredata がありません: ${TS2_CORE_UNPACKED_DIR}"
+    false
+  fi
+  if [[ ! -d "${TS2_JAMES_CORE_UNPACKED_DIR}" ]]; then
+    echo "[ERROR] unpack 済みの TS2Prototype-WindowsNoEditor-James-coredata がありません: ${TS2_JAMES_CORE_UNPACKED_DIR}"
+    false
+  fi
+  # coredata only: delete existing Japanese story assets (cleanup before MOD overlay)
+  local deleted=0
+  while IFS= read -r f; do
+    [[ -n "${f}" ]] || continue
+    rm -f "${f}"
+    deleted=$((deleted + 1))
+  done < <(
+    find "${TS2_CORE_UNPACKED_DIR}" -type f \( -name "*_S_*_ja.uasset" -o -name "*_S_*_ja.uexp" \) 2>/dev/null \
+      | grep -E '/[^/]*_S_([0-9]+|StoryName)_ja\.(uasset|uexp)$' || true
+  )
+  echo "       coredata: 削除 ${deleted} ファイル"
+  local deleted_james=0
+  while IFS= read -r f; do
+    [[ -n "${f}" ]] || continue
+    rm -f "${f}"
+    deleted_james=$((deleted_james + 1))
+  done < <(
+    find "${TS2_JAMES_CORE_UNPACKED_DIR}" -type f \( -name "*_S_*_ja.uasset" -o -name "*_S_*_ja.uexp" \) 2>/dev/null \
+      | grep -E '/[^/]*_S_([0-9]+|StoryName)_ja\.(uasset|uexp)$' || true
+  )
+  echo "       James coredata: 削除 ${deleted_james} ファイル"
   rsync -a "${MOD_OVERLAY_DIR}/" "${TS2_UNPACKED_DIR}/"
+  if [[ -d "${MOD_OVERLAY_SODOR_CORE_DIR}" ]]; then
+    rsync -a "${MOD_OVERLAY_SODOR_CORE_DIR}/" "${TS2_CORE_UNPACKED_DIR}/"
+  else
+    echo "[WARN] Sodor coredata 用の差し替え元フォルダがありません。スキップします: ${MOD_OVERLAY_SODOR_CORE_DIR}"
+  fi
+  if [[ -d "${MOD_OVERLAY_JAMES_CORE_DIR}" ]]; then
+    rsync -a "${MOD_OVERLAY_JAMES_CORE_DIR}/" "${TS2_JAMES_CORE_UNPACKED_DIR}/"
+  else
+    echo "[WARN] James coredata 用の差し替え元フォルダがありません。スキップします: ${MOD_OVERLAY_JAMES_CORE_DIR}"
+  fi
   echo "       反映先: ${TS2_UNPACKED_DIR}"
+  echo "       反映先: ${TS2_CORE_UNPACKED_DIR}"
+  echo "       反映先: ${TS2_JAMES_CORE_UNPACKED_DIR}"
 }
 
 step_prepare_staging() {
@@ -153,7 +291,7 @@ step_build_response_file() {
 
 step_run_repak_pack() {
   echo ""
-  echo "[8/10] repak pack (--compression Zlib --version V11) ..."
+  echo "[8/10] repak pack (3種) (--compression Zlib --version V11) ..."
   if ! command -v "${REPAK_CMD}" >/dev/null 2>&1; then
     echo "[ERROR] repak が見つかりません: ${REPAK_CMD}"
     false
@@ -164,20 +302,42 @@ step_run_repak_pack() {
   fi
   "${REPAK_CMD}" pack --compression Zlib --version V11 "${TS2_UNPACKED_DIR}" "${OUTPUT_PAK}"
   echo "       出力: ${OUTPUT_PAK}"
+
+  if [[ ! -d "${TS2_CORE_UNPACKED_DIR}" ]]; then
+    echo "[ERROR] パック対象 (coredata) がありません: ${TS2_CORE_UNPACKED_DIR}"
+    false
+  fi
+  "${REPAK_CMD}" pack --compression Zlib --version V11 "${TS2_CORE_UNPACKED_DIR}" "${OUTPUT_CORE_PAK}"
+  echo "       出力: ${OUTPUT_CORE_PAK}"
+
+  if [[ ! -d "${TS2_JAMES_CORE_UNPACKED_DIR}" ]]; then
+    echo "[ERROR] パック対象 (James coredata) がありません: ${TS2_JAMES_CORE_UNPACKED_DIR}"
+    false
+  fi
+  "${REPAK_CMD}" pack --compression Zlib --version V11 "${TS2_JAMES_CORE_UNPACKED_DIR}" "${OUTPUT_JAMES_CORE_PAK}"
+  echo "       出力: ${OUTPUT_JAMES_CORE_PAK}"
 }
 
 step_verify_output() {
   echo ""
-  echo "[9/10] 出力確認 ..."
+  echo "[9/10] 出力確認 (3種) ..."
   if [[ ! -f "${OUTPUT_PAK}" ]]; then
     echo "[ERROR] 出力 pak が生成されていません: ${OUTPUT_PAK}"
+    false
+  fi
+  if [[ ! -f "${OUTPUT_CORE_PAK}" ]]; then
+    echo "[ERROR] 出力 coredata pak が生成されていません: ${OUTPUT_CORE_PAK}"
+    false
+  fi
+  if [[ ! -f "${OUTPUT_JAMES_CORE_PAK}" ]]; then
+    echo "[ERROR] 出力 James coredata pak が生成されていません: ${OUTPUT_JAMES_CORE_PAK}"
     false
   fi
 }
 
 step_install_to_game() {
   echo ""
-  echo "[10/10] ゲームの TS2Prototype-WindowsNoEditor.pak を差し替え ..."
+  echo "[10/10] ゲームの pak を差し替え (3種) ..."
   if [[ ! -f "${OUTPUT_PAK}" ]]; then
     echo "[ERROR] 配置する pak がありません: ${OUTPUT_PAK}"
     false
@@ -189,6 +349,30 @@ step_install_to_game() {
   fi
   cp -f "${OUTPUT_PAK}" "${GAME_ORIGINAL_PAK}"
   echo "       配置先: ${GAME_ORIGINAL_PAK}"
+
+  if [[ ! -f "${OUTPUT_CORE_PAK}" ]]; then
+    echo "[ERROR] 配置する coredata pak がありません: ${OUTPUT_CORE_PAK}"
+    false
+  fi
+  if [[ ! -f "${GAME_ORIGINAL_CORE_PAK}" ]]; then
+    echo "[ERROR] ゲーム側の TS2Prototype-WindowsNoEditor-Sodor-coredata.pak が見つかりません（パスを確認してください）。"
+    echo "       ${GAME_ORIGINAL_CORE_PAK}"
+    false
+  fi
+  cp -f "${OUTPUT_CORE_PAK}" "${GAME_ORIGINAL_CORE_PAK}"
+  echo "       配置先: ${GAME_ORIGINAL_CORE_PAK}"
+
+  if [[ ! -f "${OUTPUT_JAMES_CORE_PAK}" ]]; then
+    echo "[ERROR] 配置する James coredata pak がありません: ${OUTPUT_JAMES_CORE_PAK}"
+    false
+  fi
+  if [[ ! -f "${GAME_ORIGINAL_JAMES_CORE_PAK}" ]]; then
+    echo "[ERROR] ゲーム側の TS2Prototype-WindowsNoEditor-James-coredata.pak が見つかりません（パスを確認してください）。"
+    echo "       ${GAME_ORIGINAL_JAMES_CORE_PAK}"
+    false
+  fi
+  cp -f "${OUTPUT_JAMES_CORE_PAK}" "${GAME_ORIGINAL_JAMES_CORE_PAK}"
+  echo "       配置先: ${GAME_ORIGINAL_JAMES_CORE_PAK}"
 }
 
 step_cleanup_work() {
@@ -216,6 +400,7 @@ step_cleanup_work() {
 }
 
 step_download_repak
+step_migrate_v010_backup
 step_backup_original_pak
 step_unpack_backup_pak
 step_overlay_mod_to_ts2
