@@ -1,0 +1,37 @@
+# このファイルは「同梱テンプレ」です。
+# 初回実行時、永続設定として次の場所にコピーされ、以後はそちらが優先して使われます。
+# - Windows: "%LOCALAPPDATA%\WOS_JapaneseMOD\config.yaml"
+# - macOS: "~/Library/Application Support/WOS_JapaneseMOD/config.yaml"
+#
+# ZIP を別バージョンに更新しても設定を引き継ぎたい場合は、永続設定側の config.yaml を編集してください。
+#
+# 適用するフォント差し替えの種類（必須）
+# - knapford: 英語フォントに Knapford を採用
+# - sodor:    英語フォントに SODOR を採用
+variant: knapford
+
+# .pak が入っている Paks ディレクトリ（既定値。必要なら下の `game_pak_dir` で上書きできます）
+# - Windows: "C:\Program Files (x86)\Steam\steamapps\common\Thomas & Friends™ Wonders of Sodor\WindowsNoEditor\TS2Prototype\Content\Paks"
+# - macOS（Sikarugir / Wine prefix）:
+#   "~/Applications/Sikarugir/Steam.app/Contents/SharedSupport/prefix/drive_c/Program Files (x86)/Steam/steamapps/common/Thomas & Friends™ Wonders of Sodor/WindowsNoEditor/TS2Prototype/Content/Paks"
+game_pak_dir: ""
+
+# バックアップ保存先（既定値。必要なら下の `backup_dir` で上書きできます）
+# - Windows: "%LOCALAPPDATA%\WOS_JapaneseMOD\Backup"
+# - macOS: "~/Library/Application Support/WOS_JapaneseMOD/Backup"
+backup_dir: ""
+
+# 成功時に作業フォルダを削除するか（既定: true）
+cleanup: true
+
+# repak の設定
+# - macOS: `brew install bear10591/tap/repak`（既定では PATH 上の repak を使います）
+# - Windows: 実行時に GitHub Releases から自動DL（既定の保存先: %LOCALAPPDATA%\WOS_JapaneseMOD\repak_cli-x86_64-pc-windows-msvc）
+repak:
+  # macOS: repak のパスを明示したい場合（空なら PATH から探します）
+  path: ""
+  # Windows: repak のDL/キャッシュ先を変えたい場合（空なら既定値）
+  windows_dir: ""
+  # Windows: 既にDL済みでも repak を取り直す（既定: false）
+  force_redownload: false
+

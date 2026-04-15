@@ -15,14 +15,12 @@ Desktop.ini
 *~
 .idea/
 
-# Python (optional helper scripts)
-__pycache__/
-*.py[cod]
-*$py.class
-.Python
-.venv/
-venv/
-env/
+# Rust / Cargo
+target/
+**/*.rs.bk
+
+# Build outputs (macOS)
+*.dSYM/
 
 # Logs / temp files
 *.log
@@ -33,6 +31,12 @@ env/
 Backup/
 WOS_pack_work_Knapford/
 WOS_pack_work_SODOR/
+
+# repak CLI (if downloaded into repo by override)
+repak_cli-*/
+
+# Release/build artifacts
+dist/
 
 # Private work directories
 locres/

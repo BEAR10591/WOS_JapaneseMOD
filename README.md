@@ -1,6 +1,6 @@
 # WOS Japanese MOD
 
-![スクリーンショット](assets/screenshot-01.jpg)
+![スクリーンショット](screenshots/screenshot-01.jpg)
 
 「**きかんしゃトーマス™: ソドー島の不思議**」向けの日本語表示最適化 MOD です。  
 ゲームの `TS2Prototype-WindowsNoEditor.pak` を **repak** で展開・再パックし、MOD 用アセットを反映します。
@@ -20,68 +20,23 @@
 
 ## 同梱物
 
-OS ごとに **ビルド用スクリプト**の拡張子が異なります。**MOD データのフォルダ**（`WOS_JapaneseMOD_Knapford/`、`WOS_JapaneseMOD_SODOR/`）は Windows / macOS で共通です。
+**MOD データのフォルダ**（`WOS_JapaneseMOD_Knapford/`、`WOS_JapaneseMOD_SODOR/`）は Windows / macOS で共通です。  
+適用処理は **Rust 製 CLI** が行います（バックアップ → 展開 → 上書きコピー → 再パック → ゲームへ書き戻し）。  
+Windows: `WOS_JapaneseMOD.exe` / macOS: `WOS_JapaneseMOD`
 
-### Python ツール（推奨・共通）
+### 設定ファイル（共通）
 
-Windows / macOS のどちらでも同じ手順で動く **Python 製ツール `wosmod`** を同梱しています。  
-（内部で **repak を自動ダウンロード**し、バックアップ → 展開 → 上書きコピー → 再パック → インストールまで一括で行います）
+同梱テンプレ `config.yaml` をベースに設定します。初回実行時に、ユーザー固有の永続設定として次の場所へコピーされ、以後は **永続設定が優先**されます。
 
-- 使い方（リポジトリをクローンして使う場合）:
+- Windows: `%LOCALAPPDATA%\WOS_JapaneseMOD\config.yaml`
+- macOS: `~/Library/Application Support/WOS_JapaneseMOD/config.yaml`
 
-  ```bash
-  python -m venv .venv
-  source .venv/bin/activate  # Windows は .venv\Scripts\activate
-  python -m pip install -U pip
-  python -m pip install -e .
-  wosmod all --variant knapford
-  # または
-  wosmod all --variant sodor
-  ```
+※ ZIP を別バージョンに更新しても設定を引き継ぎたい場合は、上記の **永続設定**を編集してください。
 
-  ※ ゲームの pak が既定場所に無い場合は `--game-pak "<フルパス>"` を指定してください。  
-  ※ `--no-cleanup` を付けると作業フォルダを残せます（トラブル調査用）。
+### 実行ファイル（配布物）
 
-### PyInstaller で `.exe` / `.app` を作る（配布者向け）
-
-このリポジトリには PyInstaller 用の設定を同梱しています。
-
-- macOS:
-
-  ```bash
-  bash scripts/build_macos.sh
-  ```
-
-- Windows（PowerShell）:
-
-  ```powershell
-  powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1
-  ```
-
-生成物は `dist/` に出ます。
-
-- GUI アプリ: `dist/WOS_JapaneseMOD.app`（macOS） / `dist/WOS_JapaneseMOD/WOS_JapaneseMOD.exe`（Windows）
-- CLI: `dist/wosmod/wosmod`（macOS） / `dist/wosmod/wosmod.exe`（Windows）
-
-### Windows
-
-| 種類 | ファイル |
-|------|----------|
-| ビルド用バッチ | `WOS_JapaneseMOD_Knapford.bat` … **英語フォントに Knapford が採用される** |
-| | `WOS_JapaneseMOD_SODOR.bat` … **英語フォントに SODOR が採用される** |
-| mod データ | `WOS_JapaneseMOD_Knapford/`、`WOS_JapaneseMOD_SODOR/` |
-
-### macOS
-
-| 種類 | ファイル |
-|------|----------|
-| ビルド用スクリプト | `WOS_JapaneseMOD_Knapford.command` … **英語フォントに Knapford が採用される** |
-| | `WOS_JapaneseMOD_SODOR.command` … **英語フォントに SODOR が採用される** |
-| mod データ | `WOS_JapaneseMOD_Knapford/`、`WOS_JapaneseMOD_SODOR/`（Windows と同じ） |
-
-※ 初めて `.command` を開くとき、macOS のセキュリティで止められることがあります。右クリック →「開く」から試すか、ターミナルで `chmod +x WOS_JapaneseMOD_*.command` を実行してからダブルクリックしてください。
-
-**どちらか一方だけ**をゲームに入れる想定です。2 つの違いは、**英語表示に使うフォントを Knapford にするか、SODOR にするか**です。好みに合わせて、Windows では **`.bat`**、macOS では **`.command`** を選んでください。
+- macOS: `dist/macos/WOS_JapaneseMOD`
+- Windows: （同等の Windows 向けビルドを配布物に同梱）
 
 ---
 
@@ -97,74 +52,58 @@ Windows / macOS のどちらでも同じ手順で動く **Python 製ツール `w
 
 1. **zip を展開する**  
    デスクトップなど、分かりやすい場所にフォルダごと置いてください。  
-   （中に `.bat` ファイルや `WOS_JapaneseMOD_…` フォルダがある状態になっていれば OK です。）
+   （中に `WOS_JapaneseMOD.exe` と `config.yaml`、`WOS_JapaneseMOD_…` フォルダがある状態になっていれば OK です。）
 
-2. **使いたい版の `.bat` を実行する**  
-   - **Knapford 版** → `WOS_JapaneseMOD_Knapford.bat` をダブルクリック。  
-   - **SODOR 版** → `WOS_JapaneseMOD_SODOR.bat` をダブルクリック。  
+2. **`config.yaml` を必要に応じて編集する**  
+   `variant`（knapford / sodor）や `game_pak_dir` を設定します。
+
+3. **`WOS_JapaneseMOD.exe` を実行する**  
    黒い画面（コマンドプロンプト）が開き、処理が進みます。完了まで **閉じずに待ち**ます。
 
-3. **初回だけバックアップが作られる**  
-   ゲーム本体の元 pak が、同じフォルダ内の `Backup\TS2Prototype-WindowsNoEditor.pak` にコピーされます。**元に戻したいとき**は、このファイルをゲームの `…\Paks\` に戻す方法を検討してください（自己責任です）。
+4. **初回だけバックアップが作られる**  
+   ゲーム本体の元 pak が、既定で `%LOCALAPPDATA%\WOS_JapaneseMOD\Backup\` に保存されます。**元に戻したいとき**は、ここに保存されたファイルをゲームの `…\Paks\` に戻す方法を検討してください（自己責任です）。
    
-   ※ **ゲーム本体がアップデート**されると、ゲーム側の `TS2Prototype-WindowsNoEditor.pak` が新しいものに置き換わることがあります。その場合は **もう一度 `.bat` / `.command` を実行して MOD を再適用**してください。  
-   ※ アップデート後に **バックアップも取り直したい**場合は、実行前に `Backup\` フォルダ（または `Backup\TS2Prototype-WindowsNoEditor.pak`）を **一度削除**してから実行してください（バックアップが存在するとスクリプトは再作成をスキップします）。
+   ※ **ゲーム本体がアップデート**されると、ゲーム側の pak が新しいものに置き換わることがあります。その場合は **もう一度 `WOS_JapaneseMOD.exe` を実行して MOD を再適用**してください。  
+   ※ アップデート後に **バックアップも取り直したい**場合は、実行前に `%LOCALAPPDATA%\WOS_JapaneseMOD\Backup\` を **一度退避/削除**してから実行してください（バックアップが存在すると再作成をスキップします）。
 
-4. **「完了」と出たら終了**  
-   スクリプトが、ビルドした pak をゲームのインストール先へコピーして差し替えます。
+5. **「完了」と出たら終了**  
+   ツールが、再パックした pak をゲームの `Paks\` に書き戻して差し替えます（3種）。
 
 ### うまくいかないとき
 
 - **ゲームや Steam を起動したまま**だと、ファイルがロックされて失敗することがあります。いったんすべて終了してから再実行してください。
-- **ウイルス対策ソフト**が `.bat` やダウンロードした `repak` をブロックすることがあります。警告が出た場合は、当 MOD 用フォルダを除外する／一時的に許可するなど、ご自身の判断で調整してください。
-- Steam の **ライブラリを別ドライブ**に置いているなど、下記の「デフォルトのパス」と違う場合は、`.bat` をメモ帳で開き、ゲームの `TS2Prototype-WindowsNoEditor.pak` の場所に合わせて変数を編集する必要があります。
+- **ウイルス対策ソフト**がダウンロードした `repak` をブロックすることがあります。警告が出た場合は、`%LOCALAPPDATA%\WOS_JapaneseMOD\` を除外する／一時的に許可するなど、ご自身の判断で調整してください。
+- Steam の **ライブラリを別ドライブ**に置いているなど、デフォルトの場所と違う場合は、永続設定（`%LOCALAPPDATA%\WOS_JapaneseMOD\config.yaml`）で `game_pak_dir` を設定してください。
 
 ---
 
-## スクリプトが内部的に行うこと（Windows）
+## 内部的に行うこと（Windows）
 
-1. **repak** の準備（初回は GitHub から Windows 用をダウンロードしてフォルダに展開。既に `repak.exe` がある場合は省略可）  
-2. ゲームの **元 pak** を `Backup\TS2Prototype-WindowsNoEditor.pak` に保存（**初回のみ**。既にあればスキップ）  
-3. その pak を **`WOS_pack_work_Knapford\TS2Prototype-WindowsNoEditor\`** または **`WOS_pack_work_SODOR\TS2Prototype-WindowsNoEditor\`** に展開する（`repak unpack` の `--output`）  
-4. `WOS_JapaneseMOD_Knapford` または `WOS_JapaneseMOD_SODOR` の内容を **上書きコピー**  
-5. **再パック**して、同じ作業ルート直下に `TS2Prototype-WindowsNoEditor.pak` を生成（展開フォルダと並ぶ）  
-6. その pak を **ゲームの Paks フォルダ**にある同名ファイルと **差し替え**  
-7. 成功したら、**`WOS_pack_work_Knapford\` と `WOS_pack_work_SODOR\` の両方**をフォルダごと削除して容量を回収（設定でオフにできます）
+1. **repak** の準備（初回は GitHub から Windows 用を自動ダウンロードして配置。2 回目以降は再利用）  
+2. ゲームの **元 pak（3種）** をバックアップに保存（**初回のみ**。既にあればスキップ）  
+3. バックアップから pak を作業フォルダへ展開（`repak unpack`）  
+4. `WOS_JapaneseMOD_Knapford/` または `WOS_JapaneseMOD_SODOR/` の内容を **上書きコピー**  
+5. **再パック**して、ゲームの `Paks\` に **直接書き戻し**（`repak pack`）  
+6. 成功したら、作業フォルダを削除（`cleanup: true` の場合）
 
-- **バックアップ**: `Backup\TS2Prototype-WindowsNoEditor.pak`（Knapford / SODOR で共有）  
-- **作業ルート**（`WOS_pack_work_Knapford\` / `WOS_pack_work_SODOR\`）: 実行したスクリプト側のフォルダの中に **`TS2Prototype-WindowsNoEditor\`**（展開ツリー）と **`TS2Prototype-WindowsNoEditor.pak`**（ビルド結果）が置かれます。クリーンアップ有効時は **両方の作業ルートをまとめて削除**します（どちらの `.bat` / `.command` を実行しても同じです）。
+- **バックアップ**: `%LOCALAPPDATA%\WOS_JapaneseMOD\Backup\`  
+- **作業フォルダ**: 展開した ZIP の中（`WOS_pack_work_Knapford\` / `WOS_pack_work_SODOR\`）。成功時は削除されます（失敗時に残ることがあります）。
 
 ---
 
 ## ゲームの pak の場所（Windows）
 
-次の **いずれか**を自動で探します（通常の Steam 既定インストール向け）。
+`config.yaml` の `game_pak_dir` が空の場合、次の場所を自動で探します（通常の Steam 既定インストール向け）。
 
-- `C:\Program Files (x86)\Steam\steamapps\common\Thomas & Friends™ Wonders of Sodor\WindowsNoEditor\TS2Prototype\Content\Paks\TS2Prototype-WindowsNoEditor.pak`
-- `C:\Program Files\Steam\steamapps\common\...`（同上）
+- `C:\Program Files (x86)\Steam\steamapps\common\Thomas & Friends™ Wonders of Sodor\WindowsNoEditor\TS2Prototype\Content\Paks`
 
-別フォルダにインストールしている場合は、各 `WOS_JapaneseMOD_*.bat` の **`:FIND_GAME_PAK`** 内にある PowerShell コマンド中の候補パス（`C:\Program Files (x86)\Steam\steamapps\common` / `C:\Program Files\Steam\steamapps\common`）を、実際の Steam インストール先に合わせて編集してください。
-
----
-
-## 設定の変更（Windows・上級者向け）
-
-各 `.bat` の先頭で `set` されている変数で、次のような動きを調整できます（**既定**はスクリプトに書かれている値です）。
-
-| 変数 | 既定 | 意味 |
-|------|------|------|
-| `SKIP_REPAK_DL_IF_PRESENT` | `1` | `1` のとき、既に `repak.exe` があれば GitHub からの再ダウンロードを試みない。`0` だと毎回ダウンロードを試みる |
-| `FORCE_REPAK_DL` | `0` | `1` だと repak を毎回取り直す（上書き展開） |
-| `SKIP_REPAK_CHECK` | `1` | `0` だと**実行開始時**に `repak.exe` の存在を必須にし、無ければ即終了。`1` だとその事前チェックを省略し、[1/10] の取得処理まで進む（未取得でもエラーにしない） |
-| `CLEANUP_AFTER_BUILD` | `1` | `1` で成功後に **`WOS_pack_work_Knapford` と `WOS_pack_work_SODOR` の両方**をフォルダごと削除。`0` だと残す（トラブル調査用） |
-
-※ `SKIP_REPAK_CHECK` は **Windows の `.bat` にもあります**（macOS の `.command` と同じ名前・同じ考え方です）。
+別フォルダにインストールしている場合は、永続設定（`%LOCALAPPDATA%\WOS_JapaneseMOD\config.yaml`）で `game_pak_dir` を設定してください。
 
 ---
 
 ## macOS で使う場合
 
-macOS では、同梱の **`WOS_JapaneseMOD_Knapford.command`** / **`WOS_JapaneseMOD_SODOR.command`** を使います。
+macOS では、`brew` で `repak` を入れた上で、同梱の `WOS_JapaneseMOD` を実行します。
 
 1. **Homebrew** で **repak** を入れます。
 
@@ -172,23 +111,12 @@ macOS では、同梱の **`WOS_JapaneseMOD_Knapford.command`** / **`WOS_Japanes
    brew install bear10591/tap/repak
    ```
 
-2. **`.command` を実行**します（ターミナルからでも、Finder でダブルクリックでも可）。  
-   処理の流れは Windows 版と同様です。
+2. `config.yaml` を必要に応じて編集します（`variant` / `game_pak_dir`）。
 
-3. **ゲームの pak のパス**は、デフォルトで **Sikarugir** で作成した Steam（Wine 内）を想定しています。環境が違う場合は、各 `.command` 内の `GAME_ORIGINAL_PAK` を編集してください。
+3. `dist/macos/WOS_JapaneseMOD` を実行します（ターミナルからでも、Finder でダブルクリックでも可）。  
+   処理の流れは Windows と同様です。
 
-   ```
-   ${HOME}/Applications/Sikarugir/Steam.app/Contents/SharedSupport/prefix/drive_c/Program Files (x86)/Steam/steamapps/common/Thomas & Friends™ Wonders of Sodor/WindowsNoEditor/TS2Prototype/Content/Paks/TS2Prototype-WindowsNoEditor.pak
-   ```
-
-4. ターミナルから実行する場合、次の **環境変数**で挙動を変えられます（省略時は括弧内の既定）。
-
-| 変数 | 既定 | 意味 |
-|------|------|------|
-| `SKIP_REPAK_DL_IF_PRESENT` | `1` | `repak` が PATH にあれば `brew install` を省略 |
-| `FORCE_REPAK_DL` | `0` | `1` なら `brew reinstall bear10591/tap/repak` |
-| `SKIP_REPAK_CHECK` | `1` | `0` だと**実行開始時**に `repak` の存在を必須にし、無ければ即終了。`1` だとその事前チェックを省略し、[1/10] の取得処理まで進む（未取得でもエラーにしない） |
-| `CLEANUP_AFTER_BUILD` | `1` | `1` で成功後に **`WOS_pack_work_Knapford` と `WOS_pack_work_SODOR` の両方**をフォルダごと削除。`0` だと残す（トラブル調査用） |
+4. **ゲームの pak の場所**は、デフォルトで **Sikarugir** で作成した Steam（Wine 内）を想定しています。環境が違う場合は `config.yaml` の `game_pak_dir` を設定してください。
 
 ---
 
@@ -208,6 +136,6 @@ MIT License（詳細は `LICENSE` を参照）。ゲーム本体および Steam 
 
 ## スクリーンショット
 
-![スクリーンショット 02](assets/screenshot-02.jpg)
-![スクリーンショット 03](assets/screenshot-03.jpg)
-![スクリーンショット 04](assets/screenshot-04.jpg)
+![スクリーンショット 02](screenshots/screenshot-02.jpg)
+![スクリーンショット 03](screenshots/screenshot-03.jpg)
+![スクリーンショット 04](screenshots/screenshot-04.jpg)
