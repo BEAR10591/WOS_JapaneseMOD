@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-setlocal EnableExtensions EnableDelayedExpansion
+setlocal EnableExtensions DisableDelayedExpansion
 
 rem =============================================================================
 rem  Build TS2Prototype-WindowsNoEditor.pak (Windows)
@@ -72,96 +72,64 @@ if "%SKIP_REPAK_CHECK%"=="0" (
 )
 
 rem --- Steps ---------------------------------------------------------------
-set "CURRENT_STEP=STEP_DOWNLOAD_REPAK"
 call :STEP_DOWNLOAD_REPAK
-set "FAIL_RC=%ERRORLEVEL%"
-if not "%FAIL_RC%"=="0" goto :FAILED
+if errorlevel 1 goto :FAILED
 
-set "CURRENT_STEP=STEP_MIGRATE_V010_BACKUP"
 call :STEP_MIGRATE_V010_BACKUP
-set "FAIL_RC=%ERRORLEVEL%"
-if not "%FAIL_RC%"=="0" goto :FAILED
+if errorlevel 1 goto :FAILED
 
-set "CURRENT_STEP=STEP_BACKUP_ORIGINAL_PAK"
 call :STEP_BACKUP_ORIGINAL_PAK
-set "FAIL_RC=%ERRORLEVEL%"
-if not "%FAIL_RC%"=="0" goto :FAILED
+if errorlevel 1 goto :FAILED
 
-set "CURRENT_STEP=STEP_BACKUP_ORIGINAL_CORE_PAK"
 call :STEP_BACKUP_ORIGINAL_CORE_PAK
-set "FAIL_RC=%ERRORLEVEL%"
-if not "%FAIL_RC%"=="0" goto :FAILED
+if errorlevel 1 goto :FAILED
 
-set "CURRENT_STEP=STEP_BACKUP_ORIGINAL_JAMES_CORE_PAK"
 call :STEP_BACKUP_ORIGINAL_JAMES_CORE_PAK
-set "FAIL_RC=%ERRORLEVEL%"
-if not "%FAIL_RC%"=="0" goto :FAILED
+if errorlevel 1 goto :FAILED
 
-set "CURRENT_STEP=STEP_UNPACK_BACKUP_PAK"
 call :STEP_UNPACK_BACKUP_PAK
-set "FAIL_RC=%ERRORLEVEL%"
-if not "%FAIL_RC%"=="0" goto :FAILED
+if errorlevel 1 goto :FAILED
 
-set "CURRENT_STEP=STEP_UNPACK_BACKUP_CORE_PAK"
 call :STEP_UNPACK_BACKUP_CORE_PAK
-set "FAIL_RC=%ERRORLEVEL%"
-if not "%FAIL_RC%"=="0" goto :FAILED
+if errorlevel 1 goto :FAILED
 
-set "CURRENT_STEP=STEP_UNPACK_BACKUP_JAMES_CORE_PAK"
 call :STEP_UNPACK_BACKUP_JAMES_CORE_PAK
-set "FAIL_RC=%ERRORLEVEL%"
-if not "%FAIL_RC%"=="0" goto :FAILED
+if errorlevel 1 goto :FAILED
 
-set "CURRENT_STEP=STEP_OVERLAY_MOD_TO_TS2"
 call :STEP_OVERLAY_MOD_TO_TS2
-set "FAIL_RC=%ERRORLEVEL%"
-if not "%FAIL_RC%"=="0" goto :FAILED
+if errorlevel 1 goto :FAILED
 
-set "CURRENT_STEP=STEP_PREPARE_STAGING"
 call :STEP_PREPARE_STAGING
-set "FAIL_RC=%ERRORLEVEL%"
-if not "%FAIL_RC%"=="0" goto :FAILED
+if errorlevel 1 goto :FAILED
 
-set "CURRENT_STEP=STEP_COPY_OR_GENERATE_FONT_ASSETS"
 call :STEP_COPY_OR_GENERATE_FONT_ASSETS
-set "FAIL_RC=%ERRORLEVEL%"
-if not "%FAIL_RC%"=="0" goto :FAILED
+if errorlevel 1 goto :FAILED
 
-set "CURRENT_STEP=STEP_BUILD_RESPONSE_FILE"
 call :STEP_BUILD_RESPONSE_FILE
-set "FAIL_RC=%ERRORLEVEL%"
-if not "%FAIL_RC%"=="0" goto :FAILED
+if errorlevel 1 goto :FAILED
 
-set "CURRENT_STEP=STEP_RUN_REPAK_PACK"
 call :STEP_RUN_REPAK_PACK
-set "FAIL_RC=%ERRORLEVEL%"
-if not "%FAIL_RC%"=="0" goto :FAILED
+if errorlevel 1 goto :FAILED
 
-set "CURRENT_STEP=STEP_VERIFY_OUTPUT"
 call :STEP_VERIFY_OUTPUT
-set "FAIL_RC=%ERRORLEVEL%"
-if not "%FAIL_RC%"=="0" goto :FAILED
+if errorlevel 1 goto :FAILED
 
-set "CURRENT_STEP=STEP_INSTALL_TO_GAME"
 call :STEP_INSTALL_TO_GAME
-set "FAIL_RC=%ERRORLEVEL%"
-if not "%FAIL_RC%"=="0" goto :FAILED
+if errorlevel 1 goto :FAILED
 
-set "CURRENT_STEP=STEP_CLEANUP_WORK"
 call :STEP_CLEANUP_WORK
-set "FAIL_RC=%ERRORLEVEL%"
-if not "%FAIL_RC%"=="0" goto :FAILED
+if errorlevel 1 goto :FAILED
 
 echo.
 echo [OK] 完了: ゲームに配置しました。
+pause
 exit /b 0
 
 :FAILED
 echo.
-  echo [FAILED] 上記のエラーを修正してから再実行してください。
-  if defined CURRENT_STEP echo        失敗ステップ: %CURRENT_STEP%
-  if defined FAIL_RC echo        終了コード: %FAIL_RC%
-  pause
+echo [FAILED] 上記のエラーを修正してから再実行してください。
+echo        exit=%ERRORLEVEL%
+pause
 exit /b 1
 
 rem =============================================================================
@@ -201,16 +169,17 @@ rem
     "  Remove-Item -LiteralPath $nested -Force -Recurse;" ^
     "};" ^
     "if (-not (Test-Path -LiteralPath (Join-Path $d 'repak.exe'))) { throw ('repak.exe not found under: ' + $d) }"
-  if errorlevel 1 (
-    echo [ERROR] repak のダウンロードまたは展開に失敗しました。
-    exit /b 1
-  )
+  if errorlevel 1 goto :ERR_REPAK_DL
   if not exist "%REPAK_EXE%" (
     echo [ERROR] repak.exe が配置されていません: "%REPAK_EXE%"
     exit /b 1
   )
   echo        配置完了: "%REPAK_EXE%"
   exit /b 0
+
+:ERR_REPAK_DL
+  echo [ERROR] repak のダウンロードまたは展開に失敗しました。
+  exit /b 1
 
 :STEP_BACKUP_ORIGINAL_PAK
   echo.
@@ -229,14 +198,15 @@ rem
   echo        検出: "%GAME_INSTALL_PAK%"
   if not exist "%ORIGINAL_PAK_DIR%" mkdir "%ORIGINAL_PAK_DIR%"
   copy /Y "%GAME_INSTALL_PAK%" "%ORIGINAL_PAK%" >nul
-  if errorlevel 1 (
-    echo [ERROR] Backup フォルダへのコピーに失敗しました。
-    echo        コピー元: "!GAME_INSTALL_PAK!"
-    echo        コピー先: "%ORIGINAL_PAK%"
-    exit /b 1
-  )
+  if errorlevel 1 goto :ERR_COPY_BACKUP_MAIN
   echo        保存しました: "%ORIGINAL_PAK%"
   exit /b 0
+
+:ERR_COPY_BACKUP_MAIN
+  echo [ERROR] Backup フォルダへのコピーに失敗しました。
+  echo        コピー元: "%GAME_INSTALL_PAK%"
+  echo        コピー先: "%ORIGINAL_PAK%"
+  exit /b 1
 
 :STEP_BACKUP_ORIGINAL_CORE_PAK
   echo.
@@ -255,14 +225,15 @@ rem
   echo        検出: "%GAME_INSTALL_CORE_PAK%"
   if not exist "%ORIGINAL_PAK_DIR%" mkdir "%ORIGINAL_PAK_DIR%"
   copy /Y "%GAME_INSTALL_CORE_PAK%" "%ORIGINAL_SODOR_CORE_PAK%" >nul
-  if errorlevel 1 (
-    echo [ERROR] Backup フォルダへのコピーに失敗しました。
-    echo        コピー元: "!GAME_INSTALL_CORE_PAK!"
-    echo        コピー先: "%ORIGINAL_SODOR_CORE_PAK%"
-    exit /b 1
-  )
+  if errorlevel 1 goto :ERR_COPY_BACKUP_CORE
   echo        保存しました: "%ORIGINAL_SODOR_CORE_PAK%"
   exit /b 0
+
+:ERR_COPY_BACKUP_CORE
+  echo [ERROR] Backup フォルダへのコピーに失敗しました。
+  echo        コピー元: "%GAME_INSTALL_CORE_PAK%"
+  echo        コピー先: "%ORIGINAL_SODOR_CORE_PAK%"
+  exit /b 1
 
 :STEP_BACKUP_ORIGINAL_JAMES_CORE_PAK
   echo.
@@ -281,14 +252,15 @@ rem
   echo        検出: "%GAME_INSTALL_JAMES_CORE_PAK%"
   if not exist "%ORIGINAL_PAK_DIR%" mkdir "%ORIGINAL_PAK_DIR%"
   copy /Y "%GAME_INSTALL_JAMES_CORE_PAK%" "%ORIGINAL_JAMES_CORE_PAK%" >nul
-  if errorlevel 1 (
-    echo [ERROR] Backup フォルダへのコピーに失敗しました。
-    echo        コピー元: "!GAME_INSTALL_JAMES_CORE_PAK!"
-    echo        コピー先: "%ORIGINAL_JAMES_CORE_PAK%"
-    exit /b 1
-  )
+  if errorlevel 1 goto :ERR_COPY_BACKUP_JAMES
   echo        保存しました: "%ORIGINAL_JAMES_CORE_PAK%"
   exit /b 0
+
+:ERR_COPY_BACKUP_JAMES
+  echo [ERROR] Backup フォルダへのコピーに失敗しました。
+  echo        コピー元: "%GAME_INSTALL_JAMES_CORE_PAK%"
+  echo        コピー先: "%ORIGINAL_JAMES_CORE_PAK%"
+  exit /b 1
 
 :FIND_GAME_PAK
   set "GAME_INSTALL_PAK="
@@ -317,12 +289,12 @@ rem
 
 :ERR_MISSING_GAME_CORE_PAK
   echo [ERROR] ゲーム側の TS2Prototype-WindowsNoEditor-Sodor-coredata.pak が見つかりません（Steam のインストール先を確認してください）。
-  echo        "!GAME_INSTALL_CORE_PAK!"
+  echo        "%GAME_INSTALL_CORE_PAK%"
   exit /b 1
 
 :ERR_MISSING_GAME_JAMES_CORE_PAK
   echo [ERROR] ゲーム側の TS2Prototype-WindowsNoEditor-James-coredata.pak が見つかりません（Steam のインストール先を確認してください）。
-  echo        "!GAME_INSTALL_JAMES_CORE_PAK!"
+  echo        "%GAME_INSTALL_JAMES_CORE_PAK%"
   exit /b 1
 
 :STEP_UNPACK_BACKUP_PAK
@@ -536,33 +508,36 @@ rem
   call :FIND_GAME_PAK
   if errorlevel 1 exit /b 1
   copy /Y "%OUTPUT_PAK%" "%GAME_INSTALL_PAK%" >nul
-  if errorlevel 1 (
-    echo [ERROR] ゲームフォルダへのコピーに失敗しました（権限・ファイル使用中の可能性があります）。
-    echo        コピー元: "%OUTPUT_PAK%"
-    echo        コピー先: "!GAME_INSTALL_PAK!"
-    echo        管理者として実行するか、ゲーム・ランチャーを終了してから再試行してください。
-    exit /b 1
-  )
+  if errorlevel 1 goto :ERR_INSTALL_MAIN
   copy /Y "%OUTPUT_CORE_PAK%" "%GAME_INSTALL_CORE_PAK%" >nul
-  if errorlevel 1 (
-    echo [ERROR] ゲームフォルダへのコピーに失敗しました（権限・ファイル使用中の可能性があります）。
-    echo        コピー元: "%OUTPUT_CORE_PAK%"
-    echo        コピー先: "!GAME_INSTALL_CORE_PAK!"
-    echo        管理者として実行するか、ゲーム・ランチャーを終了してから再試行してください。
-    exit /b 1
-  )
-  echo        配置先: "!GAME_INSTALL_PAK!"
-  echo        配置先: "!GAME_INSTALL_CORE_PAK!"
+  if errorlevel 1 goto :ERR_INSTALL_CORE
+  echo        配置先: "%GAME_INSTALL_PAK%"
+  echo        配置先: "%GAME_INSTALL_CORE_PAK%"
   copy /Y "%OUTPUT_JAMES_CORE_PAK%" "%GAME_INSTALL_JAMES_CORE_PAK%" >nul
-  if errorlevel 1 (
-    echo [ERROR] ゲームフォルダへのコピーに失敗しました（権限・ファイル使用中の可能性があります）。
-    echo        コピー元: "%OUTPUT_JAMES_CORE_PAK%"
-    echo        コピー先: "!GAME_INSTALL_JAMES_CORE_PAK!"
-    echo        管理者として実行するか、ゲーム・ランチャーを終了してから再試行してください。
-    exit /b 1
-  )
-  echo        配置先: "!GAME_INSTALL_JAMES_CORE_PAK!"
+  if errorlevel 1 goto :ERR_INSTALL_JAMES
+  echo        配置先: "%GAME_INSTALL_JAMES_CORE_PAK%"
   exit /b 0
+
+:ERR_INSTALL_MAIN
+  echo [ERROR] ゲームフォルダへのコピーに失敗しました（権限・ファイル使用中の可能性があります）。
+  echo        コピー元: "%OUTPUT_PAK%"
+  echo        コピー先: "%GAME_INSTALL_PAK%"
+  echo        管理者として実行するか、ゲーム・ランチャーを終了してから再試行してください。
+  exit /b 1
+
+:ERR_INSTALL_CORE
+  echo [ERROR] ゲームフォルダへのコピーに失敗しました（権限・ファイル使用中の可能性があります）。
+  echo        コピー元: "%OUTPUT_CORE_PAK%"
+  echo        コピー先: "%GAME_INSTALL_CORE_PAK%"
+  echo        管理者として実行するか、ゲーム・ランチャーを終了してから再試行してください。
+  exit /b 1
+
+:ERR_INSTALL_JAMES
+  echo [ERROR] ゲームフォルダへのコピーに失敗しました（権限・ファイル使用中の可能性があります）。
+  echo        コピー元: "%OUTPUT_JAMES_CORE_PAK%"
+  echo        コピー先: "%GAME_INSTALL_JAMES_CORE_PAK%"
+  echo        管理者として実行するか、ゲーム・ランチャーを終了してから再試行してください。
+  exit /b 1
 
 :STEP_CLEANUP_WORK
   echo.
@@ -573,20 +548,24 @@ rem
   )
   if exist "%REPO_ROOT%WOS_pack_work_Knapford\" (
     rmdir /S /Q "%REPO_ROOT%WOS_pack_work_Knapford" >nul 2>&1
-    if errorlevel 1 (
-      echo [WARN] 作業フォルダの削除に失敗しました: "%REPO_ROOT%WOS_pack_work_Knapford"
-    ) else (
-      echo        削除: "%REPO_ROOT%WOS_pack_work_Knapford"
-    )
+    if errorlevel 1 goto :WARN_CLEANUP_KNAPFORD
+    echo        削除: "%REPO_ROOT%WOS_pack_work_Knapford"
   )
+  goto :CLEANUP_SODOR
+
+:WARN_CLEANUP_KNAPFORD
+  echo [WARN] 作業フォルダの削除に失敗しました: "%REPO_ROOT%WOS_pack_work_Knapford"
+
+:CLEANUP_SODOR
   if exist "%REPO_ROOT%WOS_pack_work_SODOR\" (
     rmdir /S /Q "%REPO_ROOT%WOS_pack_work_SODOR" >nul 2>&1
-    if errorlevel 1 (
-      echo [WARN] 作業フォルダの削除に失敗しました: "%REPO_ROOT%WOS_pack_work_SODOR"
-    ) else (
-      echo        削除: "%REPO_ROOT%WOS_pack_work_SODOR"
-    )
+    if errorlevel 1 goto :WARN_CLEANUP_SODOR
+    echo        削除: "%REPO_ROOT%WOS_pack_work_SODOR"
   )
+  exit /b 0
+
+:WARN_CLEANUP_SODOR
+  echo [WARN] 作業フォルダの削除に失敗しました: "%REPO_ROOT%WOS_pack_work_SODOR"
   exit /b 0
 
 :STEP_MIGRATE_V010_BACKUP
