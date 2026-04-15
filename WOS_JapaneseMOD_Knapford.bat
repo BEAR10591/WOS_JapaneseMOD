@@ -325,7 +325,7 @@ rem
   call :_UNPACK_ONE "%ORIGINAL_JAMES_CORE_PAK%" "%UNPACK_JAMES_CORE_OUTPUT_DIR%" "James coredata"
   exit /b %ERRORLEVEL%
 
-::_UNPACK_ONE
+:_UNPACK_ONE
   rem args: %~1=pak path, %~2=output dir, %~3=label
   set "PAK_PATH=%~1"
   set "OUT_DIR=%~2"
