@@ -276,17 +276,19 @@ rem
     set "GAME_INSTALL_CORE_PAK=%GAME_INSTALL_PAK_DIR%TS2Prototype-WindowsNoEditor-Sodor-coredata.pak"
     set "GAME_INSTALL_JAMES_CORE_PAK=%GAME_INSTALL_PAK_DIR%TS2Prototype-WindowsNoEditor-James-coredata.pak"
   )
-  if not exist "%GAME_INSTALL_CORE_PAK%" (
-    echo [ERROR] ゲーム側の TS2Prototype-WindowsNoEditor-Sodor-coredata.pak が見つかりません（Steam のインストール先を確認してください）。
-    echo        "%GAME_INSTALL_CORE_PAK%"
-    exit /b 1
-  )
-  if not exist "%GAME_INSTALL_JAMES_CORE_PAK%" (
-    echo [ERROR] ゲーム側の TS2Prototype-WindowsNoEditor-James-coredata.pak が見つかりません（Steam のインストール先を確認してください）。
-    echo        "%GAME_INSTALL_JAMES_CORE_PAK%"
-    exit /b 1
-  )
+  if not exist "%GAME_INSTALL_CORE_PAK%" goto :ERR_MISSING_GAME_CORE_PAK
+  if not exist "%GAME_INSTALL_JAMES_CORE_PAK%" goto :ERR_MISSING_GAME_JAMES_CORE_PAK
   exit /b 0
+
+:ERR_MISSING_GAME_CORE_PAK
+  echo [ERROR] ゲーム側の TS2Prototype-WindowsNoEditor-Sodor-coredata.pak が見つかりません（Steam のインストール先を確認してください）。
+  echo        "%GAME_INSTALL_CORE_PAK%"
+  exit /b 1
+
+:ERR_MISSING_GAME_JAMES_CORE_PAK
+  echo [ERROR] ゲーム側の TS2Prototype-WindowsNoEditor-James-coredata.pak が見つかりません（Steam のインストール先を確認してください）。
+  echo        "%GAME_INSTALL_JAMES_CORE_PAK%"
+  exit /b 1
 
 :STEP_UNPACK_BACKUP_PAK
   echo.
