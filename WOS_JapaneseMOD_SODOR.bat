@@ -74,67 +74,83 @@ if "%SKIP_REPAK_CHECK%"=="0" (
 rem --- Steps ---------------------------------------------------------------
 set "CURRENT_STEP=STEP_DOWNLOAD_REPAK"
 call :STEP_DOWNLOAD_REPAK
-if errorlevel 1 set "FAIL_RC=%ERRORLEVEL%"&goto :FAILED
+set "FAIL_RC=%ERRORLEVEL%"
+if not "%FAIL_RC%"=="0" goto :FAILED
 
 set "CURRENT_STEP=STEP_MIGRATE_V010_BACKUP"
 call :STEP_MIGRATE_V010_BACKUP
-if errorlevel 1 set "FAIL_RC=%ERRORLEVEL%"&goto :FAILED
+set "FAIL_RC=%ERRORLEVEL%"
+if not "%FAIL_RC%"=="0" goto :FAILED
 
 set "CURRENT_STEP=STEP_BACKUP_ORIGINAL_PAK"
 call :STEP_BACKUP_ORIGINAL_PAK
-if errorlevel 1 set "FAIL_RC=%ERRORLEVEL%"&goto :FAILED
+set "FAIL_RC=%ERRORLEVEL%"
+if not "%FAIL_RC%"=="0" goto :FAILED
 
 set "CURRENT_STEP=STEP_BACKUP_ORIGINAL_CORE_PAK"
 call :STEP_BACKUP_ORIGINAL_CORE_PAK
-if errorlevel 1 set "FAIL_RC=%ERRORLEVEL%"&goto :FAILED
+set "FAIL_RC=%ERRORLEVEL%"
+if not "%FAIL_RC%"=="0" goto :FAILED
 
 set "CURRENT_STEP=STEP_BACKUP_ORIGINAL_JAMES_CORE_PAK"
 call :STEP_BACKUP_ORIGINAL_JAMES_CORE_PAK
-if errorlevel 1 set "FAIL_RC=%ERRORLEVEL%"&goto :FAILED
+set "FAIL_RC=%ERRORLEVEL%"
+if not "%FAIL_RC%"=="0" goto :FAILED
 
 set "CURRENT_STEP=STEP_UNPACK_BACKUP_PAK"
 call :STEP_UNPACK_BACKUP_PAK
-if errorlevel 1 set "FAIL_RC=%ERRORLEVEL%"&goto :FAILED
+set "FAIL_RC=%ERRORLEVEL%"
+if not "%FAIL_RC%"=="0" goto :FAILED
 
 set "CURRENT_STEP=STEP_UNPACK_BACKUP_CORE_PAK"
 call :STEP_UNPACK_BACKUP_CORE_PAK
-if errorlevel 1 set "FAIL_RC=%ERRORLEVEL%"&goto :FAILED
+set "FAIL_RC=%ERRORLEVEL%"
+if not "%FAIL_RC%"=="0" goto :FAILED
 
 set "CURRENT_STEP=STEP_UNPACK_BACKUP_JAMES_CORE_PAK"
 call :STEP_UNPACK_BACKUP_JAMES_CORE_PAK
-if errorlevel 1 set "FAIL_RC=%ERRORLEVEL%"&goto :FAILED
+set "FAIL_RC=%ERRORLEVEL%"
+if not "%FAIL_RC%"=="0" goto :FAILED
 
 set "CURRENT_STEP=STEP_OVERLAY_MOD_TO_TS2"
 call :STEP_OVERLAY_MOD_TO_TS2
-if errorlevel 1 set "FAIL_RC=%ERRORLEVEL%"&goto :FAILED
+set "FAIL_RC=%ERRORLEVEL%"
+if not "%FAIL_RC%"=="0" goto :FAILED
 
 set "CURRENT_STEP=STEP_PREPARE_STAGING"
 call :STEP_PREPARE_STAGING
-if errorlevel 1 set "FAIL_RC=%ERRORLEVEL%"&goto :FAILED
+set "FAIL_RC=%ERRORLEVEL%"
+if not "%FAIL_RC%"=="0" goto :FAILED
 
 set "CURRENT_STEP=STEP_COPY_OR_GENERATE_FONT_ASSETS"
 call :STEP_COPY_OR_GENERATE_FONT_ASSETS
-if errorlevel 1 set "FAIL_RC=%ERRORLEVEL%"&goto :FAILED
+set "FAIL_RC=%ERRORLEVEL%"
+if not "%FAIL_RC%"=="0" goto :FAILED
 
 set "CURRENT_STEP=STEP_BUILD_RESPONSE_FILE"
 call :STEP_BUILD_RESPONSE_FILE
-if errorlevel 1 set "FAIL_RC=%ERRORLEVEL%"&goto :FAILED
+set "FAIL_RC=%ERRORLEVEL%"
+if not "%FAIL_RC%"=="0" goto :FAILED
 
 set "CURRENT_STEP=STEP_RUN_REPAK_PACK"
 call :STEP_RUN_REPAK_PACK
-if errorlevel 1 set "FAIL_RC=%ERRORLEVEL%"&goto :FAILED
+set "FAIL_RC=%ERRORLEVEL%"
+if not "%FAIL_RC%"=="0" goto :FAILED
 
 set "CURRENT_STEP=STEP_VERIFY_OUTPUT"
 call :STEP_VERIFY_OUTPUT
-if errorlevel 1 set "FAIL_RC=%ERRORLEVEL%"&goto :FAILED
+set "FAIL_RC=%ERRORLEVEL%"
+if not "%FAIL_RC%"=="0" goto :FAILED
 
 set "CURRENT_STEP=STEP_INSTALL_TO_GAME"
 call :STEP_INSTALL_TO_GAME
-if errorlevel 1 set "FAIL_RC=%ERRORLEVEL%"&goto :FAILED
+set "FAIL_RC=%ERRORLEVEL%"
+if not "%FAIL_RC%"=="0" goto :FAILED
 
 set "CURRENT_STEP=STEP_CLEANUP_WORK"
 call :STEP_CLEANUP_WORK
-if errorlevel 1 set "FAIL_RC=%ERRORLEVEL%"&goto :FAILED
+set "FAIL_RC=%ERRORLEVEL%"
+if not "%FAIL_RC%"=="0" goto :FAILED
 
 echo.
 echo [OK] 完了: ゲームに配置しました。
@@ -145,6 +161,7 @@ echo.
   echo [FAILED] 上記のエラーを修正してから再実行してください。
   if defined CURRENT_STEP echo        失敗ステップ: %CURRENT_STEP%
   if defined FAIL_RC echo        終了コード: %FAIL_RC%
+  pause
 exit /b 1
 
 rem =============================================================================
