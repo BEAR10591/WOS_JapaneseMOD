@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-setlocal EnableExtensions
+setlocal EnableExtensions EnableDelayedExpansion
 
 rem =============================================================================
 rem  Build TS2Prototype-WindowsNoEditor.pak (Windows) - SODOR
@@ -196,7 +196,7 @@ rem
   copy /Y "%GAME_INSTALL_PAK%" "%ORIGINAL_PAK%" >nul
   if errorlevel 1 (
     echo [ERROR] Backup フォルダへのコピーに失敗しました。
-    echo        コピー元: "%GAME_INSTALL_PAK%"
+    echo        コピー元: "!GAME_INSTALL_PAK!"
     echo        コピー先: "%ORIGINAL_PAK%"
     exit /b 1
   )
@@ -222,7 +222,7 @@ rem
   copy /Y "%GAME_INSTALL_CORE_PAK%" "%ORIGINAL_SODOR_CORE_PAK%" >nul
   if errorlevel 1 (
     echo [ERROR] Backup フォルダへのコピーに失敗しました。
-    echo        コピー元: "%GAME_INSTALL_CORE_PAK%"
+    echo        コピー元: "!GAME_INSTALL_CORE_PAK!"
     echo        コピー先: "%ORIGINAL_SODOR_CORE_PAK%"
     exit /b 1
   )
@@ -248,7 +248,7 @@ rem
   copy /Y "%GAME_INSTALL_JAMES_CORE_PAK%" "%ORIGINAL_JAMES_CORE_PAK%" >nul
   if errorlevel 1 (
     echo [ERROR] Backup フォルダへのコピーに失敗しました。
-    echo        コピー元: "%GAME_INSTALL_JAMES_CORE_PAK%"
+    echo        コピー元: "!GAME_INSTALL_JAMES_CORE_PAK!"
     echo        コピー先: "%ORIGINAL_JAMES_CORE_PAK%"
     exit /b 1
   )
@@ -282,12 +282,12 @@ rem
 
 :ERR_MISSING_GAME_CORE_PAK
   echo [ERROR] ゲーム側の TS2Prototype-WindowsNoEditor-Sodor-coredata.pak が見つかりません（Steam のインストール先を確認してください）。
-  echo        "%GAME_INSTALL_CORE_PAK%"
+  echo        "!GAME_INSTALL_CORE_PAK!"
   exit /b 1
 
 :ERR_MISSING_GAME_JAMES_CORE_PAK
   echo [ERROR] ゲーム側の TS2Prototype-WindowsNoEditor-James-coredata.pak が見つかりません（Steam のインストール先を確認してください）。
-  echo        "%GAME_INSTALL_JAMES_CORE_PAK%"
+  echo        "!GAME_INSTALL_JAMES_CORE_PAK!"
   exit /b 1
 
 :STEP_UNPACK_BACKUP_PAK
@@ -519,7 +519,7 @@ rem
   if errorlevel 1 (
     echo [ERROR] ゲームフォルダへのコピーに失敗しました（権限・ファイル使用中の可能性があります）。
     echo        コピー元: "%OUTPUT_PAK%"
-    echo        コピー先: "%GAME_INSTALL_PAK%"
+    echo        コピー先: "!GAME_INSTALL_PAK!"
     echo        管理者として実行するか、ゲーム・ランチャーを終了してから再試行してください。
     exit /b 1
   )
@@ -527,21 +527,21 @@ rem
   if errorlevel 1 (
     echo [ERROR] ゲームフォルダへのコピーに失敗しました（権限・ファイル使用中の可能性があります）。
     echo        コピー元: "%OUTPUT_CORE_PAK%"
-    echo        コピー先: "%GAME_INSTALL_CORE_PAK%"
+    echo        コピー先: "!GAME_INSTALL_CORE_PAK!"
     echo        管理者として実行するか、ゲーム・ランチャーを終了してから再試行してください。
     exit /b 1
   )
-  echo        配置先: "%GAME_INSTALL_PAK%"
-  echo        配置先: "%GAME_INSTALL_CORE_PAK%"
+  echo        配置先: "!GAME_INSTALL_PAK!"
+  echo        配置先: "!GAME_INSTALL_CORE_PAK!"
   copy /Y "%OUTPUT_JAMES_CORE_PAK%" "%GAME_INSTALL_JAMES_CORE_PAK%" >nul
   if errorlevel 1 (
     echo [ERROR] ゲームフォルダへのコピーに失敗しました（権限・ファイル使用中の可能性があります）。
     echo        コピー元: "%OUTPUT_JAMES_CORE_PAK%"
-    echo        コピー先: "%GAME_INSTALL_JAMES_CORE_PAK%"
+    echo        コピー先: "!GAME_INSTALL_JAMES_CORE_PAK!"
     echo        管理者として実行するか、ゲーム・ランチャーを終了してから再試行してください。
     exit /b 1
   )
-  echo        配置先: "%GAME_INSTALL_JAMES_CORE_PAK%"
+  echo        配置先: "!GAME_INSTALL_JAMES_CORE_PAK!"
   exit /b 0
 
 :STEP_CLEANUP_WORK
@@ -570,11 +570,11 @@ rem
   exit /b 0
 
 :STEP_MIGRATE_V010_BACKUP
-  echo.
-  echo [migrate] v0.1.0 の Backup を v0.1.1 の保存先へ移行 ...
   set "OLD_BACKUP_DIR=%REPO_ROOT%Backup"
   set "NEW_BACKUP_DIR=%LOCALAPPDATA%\WOS_JapaneseMOD\Backup"
   if not exist "%OLD_BACKUP_DIR%\" exit /b 0
+  echo.
+  echo [migrate] v0.1.0 の Backup を v0.1.1 の保存先へ移行 ...
   if not exist "%NEW_BACKUP_DIR%\" mkdir "%NEW_BACKUP_DIR%" >nul 2>&1
   call :_MIGRATE_ONE "%OLD_BACKUP_DIR%\TS2Prototype-WindowsNoEditor.pak" "%NEW_BACKUP_DIR%\TS2Prototype-WindowsNoEditor.pak"
   if errorlevel 1 exit /b 1

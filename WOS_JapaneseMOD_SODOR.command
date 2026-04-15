@@ -93,13 +93,13 @@ step_download_repak() {
 }
 
 step_migrate_v010_backup() {
-  echo ""
-  echo "[migrate] v0.1.0 の Backup を v0.1.1 の保存先へ移行 ..."
   local old_dir="${REPO_ROOT}/Backup"
   local new_dir="${ORIGINAL_PAK_DIR}"
   if [[ ! -d "${old_dir}" ]]; then
     return 0
   fi
+  echo ""
+  echo "[migrate] v0.1.0 の Backup を v0.1.1 の保存先へ移行 ..."
   mkdir -p "${new_dir}"
 
   local moved=0
