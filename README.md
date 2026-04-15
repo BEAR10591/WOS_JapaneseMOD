@@ -22,6 +22,47 @@
 
 OS ごとに **ビルド用スクリプト**の拡張子が異なります。**MOD データのフォルダ**（`WOS_JapaneseMOD_Knapford/`、`WOS_JapaneseMOD_SODOR/`）は Windows / macOS で共通です。
 
+### Python ツール（推奨・共通）
+
+Windows / macOS のどちらでも同じ手順で動く **Python 製ツール `wosmod`** を同梱しています。  
+（内部で **repak を自動ダウンロード**し、バックアップ → 展開 → 上書きコピー → 再パック → インストールまで一括で行います）
+
+- 使い方（リポジトリをクローンして使う場合）:
+
+  ```bash
+  python -m venv .venv
+  source .venv/bin/activate  # Windows は .venv\Scripts\activate
+  python -m pip install -U pip
+  python -m pip install -e .
+  wosmod all --variant knapford
+  # または
+  wosmod all --variant sodor
+  ```
+
+  ※ ゲームの pak が既定場所に無い場合は `--game-pak "<フルパス>"` を指定してください。  
+  ※ `--no-cleanup` を付けると作業フォルダを残せます（トラブル調査用）。
+
+### PyInstaller で `.exe` / `.app` を作る（配布者向け）
+
+このリポジトリには PyInstaller 用の設定を同梱しています。
+
+- macOS:
+
+  ```bash
+  bash scripts/build_macos.sh
+  ```
+
+- Windows（PowerShell）:
+
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1
+  ```
+
+生成物は `dist/` に出ます。
+
+- GUI アプリ: `dist/WOS_JapaneseMOD.app`（macOS） / `dist/WOS_JapaneseMOD/WOS_JapaneseMOD.exe`（Windows）
+- CLI: `dist/wosmod/wosmod`（macOS） / `dist/wosmod/wosmod.exe`（Windows）
+
 ### Windows
 
 | 種類 | ファイル |
