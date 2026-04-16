@@ -32,6 +32,37 @@ Windows: `WOS_JapaneseMOD.exe` / macOS: `WOS_JapaneseMOD`
 - Windows: `%LOCALAPPDATA%\\WOS_JapaneseMOD\\state.json`
 - macOS: `~/Library/Application Support/WOS_JapaneseMOD/state.json`
 
+### 対話式の詳細（何を聞かれる？）
+
+起動後は「質問が表示される → 入力して Enter」という流れです。ここでは **よく出る質問**を、**質問→回答（入力例）**の形でまとめます（表示文言はバージョンや環境で多少前後します）。
+
+- **Q. どの MOD を適用しますか？（Knapford / SODOR）**  
+  **A.** `k`（Knapford）または `s`（SODOR）を入力します。  
+  - 入力例: `k`  
+  - 補足: どちらもゲームに入る pak 名は同じため、**最後に適用した方**が反映されます（後述の注意事項も参照）。
+
+- **Q. ゲームの `Paks` フォルダはどこですか？（自動検出に失敗した場合）**  
+  **A.** `Paks` ディレクトリの **フルパス**を入力します。  
+  - 入力例（Windows）: `C:\Program Files (x86)\Steam\steamapps\common\Thomas & Friends™ Wonders of Sodor\WindowsNoEditor\TS2Prototype\Content\Paks`  
+  - 入力例（macOS / Wine 等）: `/Users/<you>/.../drive_c/Program Files (x86)/Steam/steamapps/common/.../Content/Paks`
+
+- **Q. repak の準備（自動取得 / 既存利用）**  
+  **A.** 初回は repak を用意します。Windows は **自動ダウンロード**、macOS は事前に `brew` で導入してください。  
+  - 補足: 2 回目以降は、取得済みであれば **再利用**されることがあります。
+
+- **Q. バックアップはどこに作られますか？**  
+  **A.** 初回実行時に、元の pak を `Backup` 配下へ保存します（既にあればスキップされます）。  
+  - 既定の保存先（Windows）: `%LOCALAPPDATA%\WOS_JapaneseMOD\Backup\`  
+  - 既定の保存先（macOS）: `~/Library/Application Support/WOS_JapaneseMOD/Backup/`
+
+- **Q. 作業フォルダ（展開先）はどこですか？**  
+  **A.** 展開した ZIP の中に作られます（成功時に自動削除される設定の場合があります）。  
+  - 例: `WOS_pack_work_Knapford/` / `WOS_pack_work_SODOR/`
+
+- **Q. 途中で失敗した／止まったように見える**  
+  **A.** まずは **ゲームと Steam を終了**してから再実行してください。次に、`Paks` のパス入力が必要だった可能性があるので、案内が出たら **フルパス**を入力してください。  
+  - 補足: 失敗時は作業フォルダが残ることがあります。原因切り分けの手がかりになるため、すぐ消さずに残しておくと便利です。
+
 ### 実行ファイル（配布物）
 
 - macOS: `dist/macos/WOS_JapaneseMOD`
@@ -56,6 +87,9 @@ Windows: `WOS_JapaneseMOD.exe` / macOS: `WOS_JapaneseMOD`
 2. **`WOS_JapaneseMOD.exe` を実行する**  
    起動後に表示される案内に従い、**k（Knapford）または s（SODOR）** を押して選択します。  
    黒い画面（コマンドプロンプト）が開き、処理が進みます。完了まで **閉じずに待ち**ます。
+
+3. **（必要なら）`Paks` の場所を入力する**  
+   自動検出できない環境では、案内に従って **`Paks` ディレクトリのフルパス**を入力します。
 
 4. **初回だけバックアップが作られる**  
    ゲーム本体の元 pak が、既定で `%LOCALAPPDATA%\WOS_JapaneseMOD\Backup\` に保存されます。**元に戻したいとき**は、ここに保存されたファイルをゲームの `…\Paks\` に戻す方法を検討してください（自己責任です）。
