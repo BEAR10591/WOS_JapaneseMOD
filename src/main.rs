@@ -1,14 +1,12 @@
 use std::ffi::OsStr;
 use std::fs;
-use std::io::Read;
-#[cfg(windows)]
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::Duration;
 
 use anyhow::{anyhow, bail, Context, Result};
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use regex::Regex;
 #[cfg(windows)]
 use reqwest::blocking::Client;
@@ -17,13 +15,19 @@ use walkdir::WalkDir;
 #[cfg(windows)]
 use zip::ZipArchive;
 
-#[derive(Debug, Clone, Copy, ValueEnum, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 enum Variant {
-    #[value(name = "knapford")]
     Knapford,
-    #[value(name = "sodor")]
     Sodor,
+}
+
+#[derive(Debug, Default, Deserialize, Serialize, Clone)]
+struct PersistentState {
+    repak_path: Option<String>,
+    paks_dir: Option<String>,
+    backup_dir: Option<String>,
+    cleanup: Option<bool>,
 }
 
 #[derive(Debug, Parser)]
@@ -39,18 +43,22 @@ fn main() -> Result<()> {
     // When launched by double-click (Finder/Explorer), the current working directory can be HOME.
     // Also, the executable may live under dist/, so we must locate the actual repo root.
     let repo_root = repo_root_dir().context("Failed to resolve repo root directory")?;
+    let mut state = load_state().unwrap_or_default();
+    let variant = prompt_variant()?;
 
-    let cfg = load_config_with_fallbacks(&repo_root)?;
+    // repak is not configured via YAML.
+    // If repak is not found, we will ask interactively what to do.
+    let Some(repak) = resolve_repak_interactive(&mut state)? else {
+        // macOS: user chose to install via brew; show command and exit.
+        return Ok(());
+    };
+    // Paks directory is not configured via YAML.
+    // If the default Paks directory is not found, ask interactively.
+    let game_paths = resolve_game_paks_interactive(&mut state)?;
 
-    let force_repak = cfg
-        .repak
-        .as_ref()
-        .and_then(|r| r.force_redownload)
-        .unwrap_or(false);
-    let repak = resolve_repak(&repo_root, force_repak, cfg.repak.as_ref())?;
-    let game_paths = resolve_game_paks_from_config(&cfg)?;
-
-    let backup_dir = resolve_backup_dir(cfg.backup_dir.as_deref())?;
+    // backup_dir is not configured via YAML.
+    // Ask interactively whether the default backup directory is OK.
+    let backup_dir = resolve_backup_dir_interactive(&mut state)?;
     fs::create_dir_all(&backup_dir).context("Failed to create backup directory")?;
 
     let backups = BackupPaths {
@@ -63,7 +71,7 @@ fn main() -> Result<()> {
     backup_if_missing(&game_paths.sodor_core, &backups.sodor_core)?;
     backup_if_missing(&game_paths.james_core, &backups.james_core)?;
 
-    let pack_work_root = match cfg.variant {
+    let pack_work_root = match variant {
         Variant::Knapford => repo_root.join("WOS_pack_work_Knapford"),
         Variant::Sodor => repo_root.join("WOS_pack_work_SODOR"),
     };
@@ -96,7 +104,7 @@ fn main() -> Result<()> {
         "James coredata",
     )?;
 
-    apply_overlay(&repo_root, cfg.variant, &unpack)?;
+    apply_overlay(&repo_root, variant, &unpack)?;
 
     // Pack
     repak_pack(&repak, &unpack.main, &outputs.main, "main pak")?;
@@ -119,13 +127,49 @@ fn main() -> Result<()> {
 
     // Install step is implicit because repak pack writes directly to game_paths.*
 
-    if cfg.cleanup.unwrap_or(true) {
+    if resolve_cleanup_interactive(&mut state)? {
         cleanup_workdirs(&repo_root)?;
     }
+
+    save_state(&state).ok();
 
     println!();
     println!("[OK] 完了: ゲームに配置しました。");
     Ok(())
+}
+
+fn prompt_variant() -> Result<Variant> {
+    println!();
+    println!("[select] 適用する英字フォントを選択してください");
+    println!("         k: Knapford / s: SODOR");
+    loop {
+        print!("         入力 (k/s): ");
+        io::stdout().flush().ok();
+
+        let mut line = String::new();
+        io::stdin()
+            .read_line(&mut line)
+            .context("Failed to read input")?;
+
+        let c = line
+            .chars()
+            .find(|ch| !ch.is_whitespace())
+            .map(|ch| ch.to_ascii_lowercase());
+
+        match c {
+            Some('k') => {
+                println!("         -> Knapford");
+                return Ok(Variant::Knapford);
+            }
+            Some('s') => {
+                println!("         -> SODOR");
+                return Ok(Variant::Sodor);
+            }
+            _ => {
+                eprintln!("         k または s を入力してください。");
+            }
+        }
+    }
 }
 
 fn app_root_dir() -> Result<PathBuf> {
@@ -228,11 +272,35 @@ fn default_backup_dir() -> Result<PathBuf> {
     }
 }
 
-fn resolve_backup_dir(override_path: Option<&str>) -> Result<PathBuf> {
-    if let Some(s) = normalize_opt_str(override_path) {
-        return Ok(expand_path(s)?);
+fn resolve_backup_dir_interactive(state: &mut PersistentState) -> Result<PathBuf> {
+    if let Some(dir) = state.backup_dir.as_deref() {
+        return Ok(PathBuf::from(dir));
     }
-    default_backup_dir()
+
+    let def = default_backup_dir()?;
+    println!();
+    println!("[select] バックアップ保存先");
+    println!("         {}", def.display());
+
+    let ok = prompt_yes_no("         この場所でいいですか？ (y/n): ")?;
+    if ok {
+        state.backup_dir = Some(def.to_string_lossy().to_string());
+        save_state(state).ok();
+        return Ok(def);
+    }
+
+    loop {
+        let raw = prompt_path("         backup_dir のフルパスを入力してください: ")?;
+        let dir = expand_path(&raw.to_string_lossy())?;
+        if dir.as_os_str().is_empty() {
+            eprintln!("         パスを入力してください。");
+            continue;
+        }
+        // Allow non-existent; we'll create it later.
+        state.backup_dir = Some(dir.to_string_lossy().to_string());
+        save_state(state).ok();
+        return Ok(dir);
+    }
 }
 
 fn backup_if_missing(src: &Path, dst: &Path) -> Result<()> {
@@ -267,7 +335,7 @@ fn copy_file(src: &Path, dst: &Path) -> Result<()> {
 fn unpack_one(repak: &Path, pak: &Path, out: &Path, label: &str) -> Result<()> {
     println!();
     println!("[unpack] {} ...", label);
-    if !repak.exists() {
+    if !repak.is_file() {
         bail!("repak not found: {}", repak.display());
     }
     if !pak.is_file() {
@@ -296,6 +364,7 @@ fn unpack_one(repak: &Path, pak: &Path, out: &Path, label: &str) -> Result<()> {
             bail!("repak unpack failed ({label}): {status}");
         }
     }
+
     println!("       展開先: {}", out.display());
     Ok(())
 }
@@ -414,12 +483,16 @@ fn copy_dir_merge(src: &Path, dst: &Path) -> Result<()> {
 fn repak_pack(repak: &Path, input_dir: &Path, output_pak: &Path, label: &str) -> Result<()> {
     println!();
     println!("[pack] {} ...", label);
+    if !repak.is_file() {
+        bail!("repak not found: {}", repak.display());
+    }
     if !input_dir.is_dir() {
         bail!("Pack input dir missing: {}", input_dir.display());
     }
     if let Some(parent) = output_pak.parent() {
         fs::create_dir_all(parent).ok();
     }
+
     let status = Command::new(repak)
         .arg("pack")
         .arg("--compression")
@@ -436,6 +509,7 @@ fn repak_pack(repak: &Path, input_dir: &Path, output_pak: &Path, label: &str) ->
     if !status.success() {
         bail!("repak pack failed ({label}): {status}");
     }
+
     println!("       出力: {}", output_pak.display());
     Ok(())
 }
@@ -478,21 +552,67 @@ fn cleanup_workdirs(repo_root: &Path) -> Result<()> {
     Ok(())
 }
 
-fn resolve_game_paks_from_config(cfg: &Config) -> Result<GamePaths> {
-    let dir = if let Some(s) = cfg.game_pak_dir.as_deref() {
-        if s.trim().is_empty() {
-            detect_default_game_pak_dir()?.ok_or_else(|| {
-                anyhow!("`game_pak_dir` is empty and no default Paks directory was found")
-            })?
-        } else {
-            expand_path(s)?
-        }
-    } else {
-        detect_default_game_pak_dir()?.ok_or_else(|| {
-            anyhow!("`game_pak_dir` is missing and no default Paks directory was found")
-        })?
+fn resolve_cleanup_interactive(state: &mut PersistentState) -> Result<bool> {
+    println!();
+    println!("[select] 後処理");
+    let default_label = match state.cleanup {
+        Some(false) => "いいえ",
+        _ => "はい",
     };
+    println!(
+        "         作業フォルダ（WOS_pack_work_*）を削除しますか？（既定: {default_label}）"
+    );
+    let v = prompt_yes_no("         削除する (y/n): ")?;
+    state.cleanup = Some(v);
+    save_state(state).ok();
+    Ok(v)
+}
 
+fn resolve_game_paks_interactive(state: &mut PersistentState) -> Result<GamePaths> {
+    if let Some(dir) = state.paks_dir.as_deref() {
+        let dir = PathBuf::from(dir);
+        if let Ok(p) = resolve_game_paks_from_dir(&dir) {
+            return Ok(p);
+        }
+    }
+
+    // 1) Try the known default install locations first.
+    if let Some(dir) = detect_default_game_pak_dir()? {
+        match resolve_game_paks_from_dir(&dir) {
+            Ok(p) => return Ok(p),
+            Err(e) => {
+                eprintln!();
+                eprintln!("[WARN] 既定の Paks ディレクトリは見つかりましたが、内容の確認に失敗しました。");
+                eprintln!("       {} ({e})", dir.display());
+            }
+        }
+    }
+
+    // 2) Ask the user for the Paks directory path.
+    println!();
+    println!("[select] Paks ディレクトリを指定してください");
+    println!("         （`.pak` が入っているフォルダ。例: .../TS2Prototype/Content/Paks）");
+    loop {
+        let raw = prompt_path("         Paks ディレクトリのフルパス: ")?;
+        let dir = expand_path(&raw.to_string_lossy())?;
+        if !dir.is_dir() {
+            eprintln!("         ディレクトリが見つかりません: {}", dir.display());
+            continue;
+        }
+        match resolve_game_paks_from_dir(&dir) {
+            Ok(p) => {
+                state.paks_dir = Some(dir.to_string_lossy().to_string());
+                save_state(state).ok();
+                return Ok(p);
+            }
+            Err(e) => {
+                eprintln!("         無効な Paks ディレクトリです: {} ({e})", dir.display());
+            }
+        }
+    }
+}
+
+fn resolve_game_paks_from_dir(dir: &Path) -> Result<GamePaths> {
     if !dir.is_dir() {
         bail!("Paks directory not found: {}", dir.display());
     }
@@ -504,7 +624,6 @@ fn resolve_game_paks_from_config(cfg: &Config) -> Result<GamePaths> {
     if !main.is_file() {
         bail!("Game pak not found: {}", main.display());
     }
-
     if !sodor_core.is_file() {
         bail!("Game coredata pak not found: {}", sodor_core.display());
     }
@@ -514,6 +633,7 @@ fn resolve_game_paks_from_config(cfg: &Config) -> Result<GamePaths> {
             james_core.display()
         );
     }
+
     Ok(GamePaths {
         main,
         sodor_core,
@@ -546,69 +666,7 @@ fn detect_default_game_pak_dir() -> Result<Option<PathBuf>> {
     }
 }
 
-fn resolve_repak(
-    _repo_root: &Path,
-    _force: bool,
-    repak_cfg: Option<&RepakConfig>,
-) -> Result<PathBuf> {
-    #[cfg(windows)]
-    {
-        let dir_override = repak_cfg.and_then(|c| normalize_opt_str(c.windows_dir.as_deref()));
-        return download_repak_windows(_repo_root, _force, dir_override);
-    }
-
-    #[cfg(not(windows))]
-    {
-        if let Some(c) = repak_cfg {
-            if let Some(p) = normalize_opt_str(c.path.as_deref()) {
-                let p = expand_path(p)?;
-                if p.is_file() {
-                    return Ok(p);
-                }
-                bail!("repak path from config not found: {}", p.display());
-            }
-        }
-        // On macOS/Linux: rely on PATH (e.g., brew install repak).
-        if let Ok(p) = which("repak") {
-            return Ok(p);
-        }
-        bail!("repak が見つかりません。macOS では `brew install bear10591/tap/repak` を実行してください。");
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct Config {
-    variant: Variant,
-    /// Directory path containing TS2Prototype-WindowsNoEditor*.pak
-    game_pak_dir: Option<String>,
-    /// Optional backup directory override
-    backup_dir: Option<String>,
-    /// true by default
-    cleanup: Option<bool>,
-    /// repak config
-    repak: Option<RepakConfig>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct RepakConfig {
-    /// macOS: explicit repak path (optional). If omitted, use PATH.
-    path: Option<String>,
-    /// Windows: directory to place/download repak (optional)
-    windows_dir: Option<String>,
-    /// If true, re-download repak even if already present (Windows only)
-    force_redownload: Option<bool>,
-}
-
-fn load_config(path: &Path) -> Result<Config> {
-    let mut s = String::new();
-    fs::File::open(path)
-        .with_context(|| format!("Config file not found: {}", path.display()))?
-        .read_to_string(&mut s)?;
-    let cfg: Config = serde_yaml::from_str(&s).context("Invalid YAML")?;
-    Ok(cfg)
-}
-
-fn default_config_dir() -> Result<PathBuf> {
+fn state_dir() -> Result<PathBuf> {
     #[cfg(windows)]
     {
         let base =
@@ -626,59 +684,39 @@ fn default_config_dir() -> Result<PathBuf> {
     }
 }
 
-fn default_config_path() -> Result<PathBuf> {
-    Ok(default_config_dir()?.join("config.yaml"))
+fn state_path() -> Result<PathBuf> {
+    Ok(state_dir()?.join("state.json"))
 }
 
-fn load_config_with_fallbacks(repo_root: &Path) -> Result<Config> {
-    // Priority:
-    // 1) persistent config: <AppSupport>/WOS_JapaneseMOD/config.yaml
-    //
-    // Additionally, if persistent config does not exist but a bundled template exists
-    // next to the executable / repo root, copy it to the persistent location on first run.
-    let persistent = default_config_path()?;
-
-    if persistent.is_file() {
-        return load_config(&persistent);
+fn load_state() -> Result<PersistentState> {
+    let path = state_path()?;
+    if !path.is_file() {
+        return Ok(PersistentState::default());
     }
-
-    // Seed from bundled template if available
-    let bundled = repo_root.join("config.yaml");
-    if bundled.is_file() {
-        if let Some(parent) = persistent.parent() {
-            fs::create_dir_all(parent).ok();
-        }
-        fs::copy(&bundled, &persistent).with_context(|| {
-            format!(
-                "Failed to copy bundled config to persistent location: {} -> {}",
-                bundled.display(),
-                persistent.display()
-            )
-        })?;
-        return load_config(&persistent);
-    }
-
-    bail!(
-        "設定ファイルが見つかりません。\n\
-         次の場所に `config.yaml` を配置してください:\n\
-         - {}\n\
-         （ヒント: 配布物に同梱されている config.yaml をコピーして編集してください）",
-        persistent.display()
-    );
+    let s = fs::read_to_string(&path)
+        .with_context(|| format!("Failed to read state: {}", path.display()))?;
+    let st: PersistentState = serde_json::from_str(&s)
+        .with_context(|| format!("Invalid state JSON: {}", path.display()))?;
+    Ok(st)
 }
 
-fn normalize_opt_str<'a>(s: Option<&'a str>) -> Option<&'a str> {
-    match s {
-        None => None,
-        Some(v) => {
-            let t = v.trim();
-            if t.is_empty() {
-                None
-            } else {
-                Some(t)
-            }
-        }
+fn save_state(state: &PersistentState) -> Result<()> {
+    let path = state_path()?;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("Failed to create state dir: {}", parent.display()))?;
     }
+    let tmp = path.with_extension("json.tmp");
+    let s = serde_json::to_string_pretty(state).context("Failed to serialize state")?;
+    fs::write(&tmp, s).with_context(|| format!("Failed to write {}", tmp.display()))?;
+    fs::rename(&tmp, &path).with_context(|| {
+        format!(
+            "Failed to replace state file: {} -> {}",
+            tmp.display(),
+            path.display()
+        )
+    })?;
+    Ok(())
 }
 
 fn expand_path(s: &str) -> Result<PathBuf> {
@@ -717,6 +755,140 @@ fn expand_path(s: &str) -> Result<PathBuf> {
     Ok(PathBuf::from(out.trim_matches('"')))
 }
 
+fn resolve_repak_interactive(state: &mut PersistentState) -> Result<Option<PathBuf>> {
+    // 1) Try PATH first, but ensure it is the latest supported version.
+    // `repak -V` should output: "repak_cli 0.2.3" (as of now).
+    const LATEST_REPAK_V: &str = "repak_cli 0.2.3";
+    if let Ok(p) = which("repak") {
+        match repak_version_string(&p) {
+            Ok(Some(v)) if v.trim() == LATEST_REPAK_V => {
+                return Ok(Some(p));
+            }
+            Ok(Some(v)) => {
+                println!();
+                println!("[repak] PATH 上の repak は最新版ではありません。");
+                println!("       検出: {v}");
+                println!("       期待: {LATEST_REPAK_V}");
+            }
+            Ok(None) => {
+                println!();
+                println!("[repak] PATH 上の repak のバージョン取得に失敗しました。");
+            }
+            Err(e) => {
+                println!();
+                println!("[repak] PATH 上の repak のバージョン確認に失敗しました: {e}");
+            }
+        }
+    }
+
+    // 2) Reuse previously provided full path if available and valid.
+    if let Some(p) = state.repak_path.as_deref() {
+        let p = PathBuf::from(p);
+        if p.is_file() {
+            if let Ok(Some(v)) = repak_version_string(&p) {
+                if v.trim() == LATEST_REPAK_V {
+                    return Ok(Some(p));
+                }
+            }
+        }
+    }
+
+    #[cfg(windows)]
+    {
+        println!();
+        println!("[repak] 最新版の repak が見つかりません。");
+        if prompt_yes_no("       GitHub Releases から最新版をダウンロードしますか？ (y/n): ")? {
+            // Always fetch "latest" when user agrees.
+            let p = download_repak_windows(true, None)?;
+            state.repak_path = Some(p.to_string_lossy().to_string());
+            save_state(state).ok();
+            return Ok(Some(p));
+        }
+
+        let p = prompt_path("       repak.exe のフルパスを入力してください: ")?;
+        if p.is_file() {
+            state.repak_path = Some(p.to_string_lossy().to_string());
+            save_state(state).ok();
+            return Ok(Some(p));
+        }
+        bail!("repak.exe が見つかりません: {}", p.display());
+    }
+
+    #[cfg(not(windows))]
+    {
+        println!();
+        println!("[repak] 最新版の repak が見つかりません。");
+        if prompt_yes_no("       Homebrew で repak をインストールしますか？ (y/n): ")? {
+            println!();
+            println!("次のコマンドを実行してください:");
+            println!();
+            println!("  brew install bear10591/tap/repak");
+            println!();
+            println!("インストール後、もう一度このツールを実行してください。");
+            return Ok(None);
+        }
+
+        let p = prompt_path("       repak（repak.exe）のフルパスを入力してください: ")?;
+        if p.is_file() {
+            state.repak_path = Some(p.to_string_lossy().to_string());
+            save_state(state).ok();
+            return Ok(Some(p));
+        }
+        bail!("repak が見つかりません: {}", p.display());
+    }
+}
+
+fn repak_version_string(repak: &Path) -> Result<Option<String>> {
+    let out = Command::new(repak)
+        .arg("-V")
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .output()
+        .with_context(|| format!("Failed to run {} -V", repak.display()))?;
+
+    if !out.status.success() {
+        return Ok(None);
+    }
+
+    let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    if s.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(s))
+    }
+}
+
+fn prompt_yes_no(prompt: &str) -> Result<bool> {
+    println!("       y: はい / n: いいえ");
+    loop {
+        print!("{prompt}");
+        io::stdout().flush().ok();
+        let mut line = String::new();
+        io::stdin().read_line(&mut line).context("Failed to read input")?;
+        let s = line.trim().to_ascii_lowercase();
+        match s.as_str() {
+            "y" | "yes" => return Ok(true),
+            "n" | "no" => return Ok(false),
+            _ => eprintln!("       y または n を入力してください。"),
+        }
+    }
+}
+
+fn prompt_path(prompt: &str) -> Result<PathBuf> {
+    loop {
+        print!("{prompt}");
+        io::stdout().flush().ok();
+        let mut line = String::new();
+        io::stdin().read_line(&mut line).context("Failed to read input")?;
+        let s = line.trim().trim_matches('"');
+        if s.is_empty() {
+            eprintln!("       パスを入力してください。");
+            continue;
+        }
+        return Ok(PathBuf::from(s));
+    }
+}
+
 fn which(name: &str) -> Result<PathBuf> {
     let paths = std::env::var_os("PATH").ok_or_else(|| anyhow!("PATH not set"))?;
     for dir in std::env::split_paths(&paths) {
@@ -751,7 +923,6 @@ struct GhAsset {
 
 #[cfg(windows)]
 fn download_repak_windows(
-    repo_root: &Path,
     force: bool,
     dir_override: Option<&str>,
 ) -> Result<PathBuf> {

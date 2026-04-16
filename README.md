@@ -24,14 +24,13 @@
 適用処理は **Rust 製 CLI** が行います（バックアップ → 展開 → 上書きコピー → 再パック → ゲームへ書き戻し）。  
 Windows: `WOS_JapaneseMOD.exe` / macOS: `WOS_JapaneseMOD`
 
-### 設定ファイル（共通）
+### 設定（共通）
 
-同梱テンプレ `config.yaml` をベースに設定します。初回実行時に、ユーザー固有の永続設定として次の場所へコピーされ、以後は **永続設定が優先**されます。
+設定は **対話式**です（ツール起動後に案内に従って入力します）。  
+入力した内容は次回以降も使えるように自動保存されます。
 
-- Windows: `%LOCALAPPDATA%\WOS_JapaneseMOD\config.yaml`
-- macOS: `~/Library/Application Support/WOS_JapaneseMOD/config.yaml`
-
-※ ZIP を別バージョンに更新しても設定を引き継ぎたい場合は、上記の **永続設定**を編集してください。
+- Windows: `%LOCALAPPDATA%\\WOS_JapaneseMOD\\state.json`
+- macOS: `~/Library/Application Support/WOS_JapaneseMOD/state.json`
 
 ### 実行ファイル（配布物）
 
@@ -44,7 +43,7 @@ Windows: `WOS_JapaneseMOD.exe` / macOS: `WOS_JapaneseMOD`
 
 - **Steam 版**の『Thomas & Friends™: Wonders of Sodor』が **パソコンにインストール済み**であること。
 - **インターネット接続**（初回のみ、後述の **repak** を自動で取りに行くため。2 回目以降は、すでに取得済みなら省略されることがあります）。
-- 可能なら、実行前に **ゲームと Steam を終了**しておくと安全です（ファイルの上書きに失敗しにくくなります）。
+- 実行前に **ゲームと Steam を必ず終了**してください（ファイルの上書きに失敗しにくくなります）。
 
 ---
 
@@ -52,12 +51,10 @@ Windows: `WOS_JapaneseMOD.exe` / macOS: `WOS_JapaneseMOD`
 
 1. **zip を展開する**  
    デスクトップなど、分かりやすい場所にフォルダごと置いてください。  
-   （中に `WOS_JapaneseMOD.exe` と `config.yaml`、`WOS_JapaneseMOD_…` フォルダがある状態になっていれば OK です。）
+   （中に `WOS_JapaneseMOD.exe` と `WOS_JapaneseMOD_…` フォルダがある状態になっていれば OK です。）
 
-2. **`config.yaml` を必要に応じて編集する**  
-   `variant`（knapford / sodor）や `game_pak_dir` を設定します。
-
-3. **`WOS_JapaneseMOD.exe` を実行する**  
+2. **`WOS_JapaneseMOD.exe` を実行する**  
+   起動後に表示される案内に従い、**k（Knapford）または s（SODOR）** を押して選択します。  
    黒い画面（コマンドプロンプト）が開き、処理が進みます。完了まで **閉じずに待ち**ます。
 
 4. **初回だけバックアップが作られる**  
@@ -72,19 +69,18 @@ Windows: `WOS_JapaneseMOD.exe` / macOS: `WOS_JapaneseMOD`
 ### うまくいかないとき
 
 - **ゲームや Steam を起動したまま**だと、ファイルがロックされて失敗することがあります。いったんすべて終了してから再実行してください。
-- **ウイルス対策ソフト**がダウンロードした `repak` をブロックすることがあります。警告が出た場合は、`%LOCALAPPDATA%\WOS_JapaneseMOD\` を除外する／一時的に許可するなど、ご自身の判断で調整してください。
-- Steam の **ライブラリを別ドライブ**に置いているなど、デフォルトの場所と違う場合は、永続設定（`%LOCALAPPDATA%\WOS_JapaneseMOD\config.yaml`）で `game_pak_dir` を設定してください。
+- Steam の **ライブラリを別ドライブ**に置いているなどで自動検出できない場合は、起動後の対話で **Paks ディレクトリのフルパス**を入力してください。
 
 ---
 
 ## 内部的に行うこと（Windows）
 
 1. **repak** の準備（初回は GitHub から Windows 用を自動ダウンロードして配置。2 回目以降は再利用）  
-2. ゲームの **元 pak（3種）** をバックアップに保存（**初回のみ**。既にあればスキップ）  
-3. バックアップから pak を作業フォルダへ展開（`repak unpack`）  
-4. `WOS_JapaneseMOD_Knapford/` または `WOS_JapaneseMOD_SODOR/` の内容を **上書きコピー**  
-5. **再パック**して、ゲームの `Paks\` に **直接書き戻し**（`repak pack`）  
-6. 成功したら、作業フォルダを削除（`cleanup: true` の場合）
+1. ゲームの **元 pak（3種）** をバックアップに保存（**初回のみ**。既にあればスキップ）  
+2. バックアップから pak を作業フォルダへ展開  
+3. `WOS_JapaneseMOD_Knapford/` または `WOS_JapaneseMOD_SODOR/` の内容を **上書きコピー**  
+4. **再パック**して、ゲームの `Paks\` に **直接書き戻し**（3種）  
+5. 成功したら、作業フォルダを削除（`cleanup: true` の場合）
 
 - **バックアップ**: `%LOCALAPPDATA%\WOS_JapaneseMOD\Backup\`  
 - **作業フォルダ**: 展開した ZIP の中（`WOS_pack_work_Knapford\` / `WOS_pack_work_SODOR\`）。成功時は削除されます（失敗時に残ることがあります）。
@@ -93,11 +89,9 @@ Windows: `WOS_JapaneseMOD.exe` / macOS: `WOS_JapaneseMOD`
 
 ## ゲームの pak の場所（Windows）
 
-`config.yaml` の `game_pak_dir` が空の場合、次の場所を自動で探します（通常の Steam 既定インストール向け）。
+次の場所を自動で探します（通常の Steam 既定インストール向け）。見つからなければ対話でフルパスを入力します。
 
 - `C:\Program Files (x86)\Steam\steamapps\common\Thomas & Friends™ Wonders of Sodor\WindowsNoEditor\TS2Prototype\Content\Paks`
-
-別フォルダにインストールしている場合は、永続設定（`%LOCALAPPDATA%\WOS_JapaneseMOD\config.yaml`）で `game_pak_dir` を設定してください。
 
 ---
 
@@ -111,12 +105,10 @@ macOS では、`brew` で `repak` を入れた上で、同梱の `WOS_JapaneseMO
    brew install bear10591/tap/repak
    ```
 
-2. `config.yaml` を必要に応じて編集します（`variant` / `game_pak_dir`）。
-
-3. `dist/macos/WOS_JapaneseMOD` を実行します（ターミナルからでも、Finder でダブルクリックでも可）。  
+2. `dist/macos/WOS_JapaneseMOD` を実行します（ターミナルからでも、Finder でダブルクリックでも可）。  
    処理の流れは Windows と同様です。
 
-4. **ゲームの pak の場所**は、デフォルトで **Sikarugir** で作成した Steam（Wine 内）を想定しています。環境が違う場合は `config.yaml` の `game_pak_dir` を設定してください。
+3. **ゲームの pak の場所**は、デフォルトで **Sikarugir** で作成した Steam（Wine 内）を想定しています。環境が違う場合は、起動後の対話で **Paks ディレクトリのフルパス**を入力してください。
 
 ---
 
