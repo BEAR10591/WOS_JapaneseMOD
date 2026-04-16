@@ -140,6 +140,11 @@ fn main() -> Result<()> {
         println!("       Enter で閉じます...");
         let _ = std::io::stdin().read_line(&mut String::new());
     }
+    #[cfg(target_os = "macos")]
+    {
+        println!("       Enter で閉じます...");
+        let _ = std::io::stdin().read_line(&mut String::new());
+    }
     Ok(())
 }
 
