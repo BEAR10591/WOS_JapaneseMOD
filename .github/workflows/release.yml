@@ -1,17 +1,14 @@
-name: CI
+name: Release
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - "src/main.rs"
-      - "**/*.locres"
+    tags:
+      - "v*"
   workflow_dispatch: {}
 
 jobs:
   build:
-    name: CI (${{ matrix.target_name }})
+    name: Release (${{ matrix.target_name }})
     runs-on: ${{ matrix.runs_on }}
     strategy:
       fail-fast: false
@@ -45,7 +42,7 @@ jobs:
           # MOD data
           cp -R "WOS_JapaneseMOD_Knapford" "dist/${{ matrix.target_name }}/"
           cp -R "WOS_JapaneseMOD_SODOR" "dist/${{ matrix.target_name }}/"
-          # docs/licenses (keep lightweight but useful)
+          # docs/licenses
           cp -f "README.md" "dist/${{ matrix.target_name }}/README.md"
           if [ -f "LICENSE" ]; then cp -f "LICENSE" "dist/${{ matrix.target_name }}/LICENSE"; fi
           if [ -d "Font_licenses" ]; then cp -R "Font_licenses" "dist/${{ matrix.target_name }}/"; fi
@@ -57,8 +54,7 @@ jobs:
         run: |
           set -euo pipefail
           cd "dist/${{ matrix.target_name }}"
-          ZIP_NAME="WOS_JapaneseMOD-${{ matrix.target_name }}-${GITHUB_SHA:0:7}.zip"
-          # Use 'zip' on both macOS and Windows runners (available in GitHub-hosted images)
+          ZIP_NAME="WOS_JapaneseMOD-${{ matrix.target_name }}-${GITHUB_REF_NAME}.zip"
           zip -r "../${ZIP_NAME}" .
           echo "zip_name=${ZIP_NAME}" >> "$GITHUB_OUTPUT"
         id: zip
@@ -68,4 +64,9 @@ jobs:
         with:
           name: WOS_JapaneseMOD-${{ matrix.target_name }}
           path: dist/${{ steps.zip.outputs.zip_name }}
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/${{ steps.zip.outputs.zip_name }}
 
