@@ -54,6 +54,7 @@ jobs:
 
       - name: Create zip
         id: zip
+        shell: bash
         run: |
           echo "zip_name=WOS_JapaneseMOD-${{ matrix.target_name }}-${GITHUB_SHA:0:7}.zip" >> "$GITHUB_OUTPUT"
 
