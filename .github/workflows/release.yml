@@ -1,5 +1,8 @@
 name: Release
 
+permissions:
+  contents: write
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
@@ -7,7 +10,12 @@ on:
   push:
     tags:
       - "v*"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to build/upload (e.g. v0.2.0). Leave empty to use the current ref."
+        required: false
+        type: string
 
 jobs:
   build:
@@ -27,6 +35,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -55,7 +65,8 @@ jobs:
         id: zip
         shell: bash
         run: |
-          echo "zip_name=WOS_JapaneseMOD-${{ matrix.target_name }}-${GITHUB_REF_NAME}.zip" >> "$GITHUB_OUTPUT"
+          release_tag="${{ inputs.release_tag || github.ref_name }}"
+          echo "zip_name=WOS_JapaneseMOD-${{ matrix.target_name }}-${release_tag}.zip" >> "$GITHUB_OUTPUT"
 
       - name: Create zip (macOS)
         if: runner.os != 'Windows'
@@ -84,5 +95,6 @@ jobs:
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.release_tag || github.ref_name }}
           files: dist/${{ steps.zip.outputs.zip_name }}
 
