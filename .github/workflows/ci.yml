@@ -54,33 +54,9 @@ jobs:
           if [ -d "font_licenses" ]; then cp -R "font_licenses" "dist/${{ matrix.target_name }}/"; fi
           if [ -d "screenshots" ]; then cp -R "screenshots" "dist/${{ matrix.target_name }}/"; fi
 
-      - name: Create zip
-        id: zip
-        shell: bash
-        run: |
-          echo "zip_name=WOS_JapaneseMOD-${{ matrix.target_name }}-${GITHUB_SHA:0:7}.zip" >> "$GITHUB_OUTPUT"
-
-      - name: Create zip (macOS)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd "dist/${{ matrix.target_name }}"
-          zip -r "../${{ steps.zip.outputs.zip_name }}" .
-
-      - name: Create zip (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $target = "dist/${{ matrix.target_name }}"
-          $zip = "dist/${{ steps.zip.outputs.zip_name }}"
-          if (Test-Path $zip) { Remove-Item $zip -Force }
-          Compress-Archive -Path "$target/*" -DestinationPath $zip -Force
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: WOS_JapaneseMOD-${{ matrix.target_name }}
-          path: dist/${{ steps.zip.outputs.zip_name }}
+          path: dist/${{ matrix.target_name }}/
 
