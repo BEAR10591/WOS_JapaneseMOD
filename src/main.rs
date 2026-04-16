@@ -135,6 +135,11 @@ fn main() -> Result<()> {
 
     println!();
     println!("[OK] 完了: ゲームに配置しました。");
+    #[cfg(windows)]
+    {
+        println!("       Enter で閉じます...");
+        let _ = std::io::stdin().read_line(&mut String::new());
+    }
     Ok(())
 }
 
