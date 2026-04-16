@@ -1,0 +1,89 @@
+name: Build release zips
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    name: Build (${{ matrix.target_name }})
+    runs-on: ${{ matrix.runs_on }}
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.ref, 'refs/tags/') ||
+      contains(toJson(github.event.commits.*.added), 'src/main.rs') ||
+      contains(toJson(github.event.commits.*.modified), 'src/main.rs') ||
+      contains(toJson(github.event.commits.*.removed), 'src/main.rs') ||
+      contains(toJson(github.event.commits.*.added), '.locres') ||
+      contains(toJson(github.event.commits.*.modified), '.locres') ||
+      contains(toJson(github.event.commits.*.removed), '.locres')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runs_on: windows-latest
+            target_name: windows
+            exe_name: WOS_JapaneseMOD.exe
+          - runs_on: macos-latest
+            target_name: macos
+            exe_name: WOS_JapaneseMOD
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build (release)
+        run: cargo build --release
+
+      - name: Prepare staging directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf dist
+          mkdir -p "dist/${{ matrix.target_name }}"
+          # executable
+          cp -f "target/release/${{ matrix.exe_name }}" "dist/${{ matrix.target_name }}/${{ matrix.exe_name }}"
+          # MOD data
+          cp -R "WOS_JapaneseMOD_Knapford" "dist/${{ matrix.target_name }}/"
+          cp -R "WOS_JapaneseMOD_SODOR" "dist/${{ matrix.target_name }}/"
+          # docs/licenses (keep lightweight but useful)
+          cp -f "README.md" "dist/${{ matrix.target_name }}/README.md"
+          if [ -f "LICENSE" ]; then cp -f "LICENSE" "dist/${{ matrix.target_name }}/LICENSE"; fi
+          if [ -d "Font_licenses" ]; then cp -R "Font_licenses" "dist/${{ matrix.target_name }}/"; fi
+          if [ -d "font_licenses" ]; then cp -R "font_licenses" "dist/${{ matrix.target_name }}/"; fi
+          if [ -d "screenshots" ]; then cp -R "screenshots" "dist/${{ matrix.target_name }}/"; fi
+
+      - name: Create zip
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "dist/${{ matrix.target_name }}"
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            ZIP_NAME="WOS_JapaneseMOD-${{ matrix.target_name }}-${GITHUB_REF_NAME}.zip"
+          else
+            ZIP_NAME="WOS_JapaneseMOD-${{ matrix.target_name }}-${GITHUB_SHA:0:7}.zip"
+          fi
+          # Use 'zip' on both macOS and Windows runners (available in GitHub-hosted images)
+          zip -r "../${ZIP_NAME}" .
+          echo "zip_name=${ZIP_NAME}" >> "$GITHUB_OUTPUT"
+        id: zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WOS_JapaneseMOD-${{ matrix.target_name }}
+          path: dist/${{ steps.zip.outputs.zip_name }}
+
+      - name: Upload to GitHub Release (tag builds)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/${{ steps.zip.outputs.zip_name }}
+
