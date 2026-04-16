@@ -48,7 +48,6 @@ jobs:
           # docs/licenses
           cp -f "README.md" "dist/${{ matrix.target_name }}/README.md"
           if [ -f "LICENSE" ]; then cp -f "LICENSE" "dist/${{ matrix.target_name }}/LICENSE"; fi
-          if [ -d "Font_licenses" ]; then cp -R "Font_licenses" "dist/${{ matrix.target_name }}/"; fi
           if [ -d "font_licenses" ]; then cp -R "font_licenses" "dist/${{ matrix.target_name }}/"; fi
           if [ -d "screenshots" ]; then cp -R "screenshots" "dist/${{ matrix.target_name }}/"; fi
 
