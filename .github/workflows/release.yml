@@ -4,9 +4,6 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 on:
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
     inputs:
       release_tag:
@@ -41,7 +38,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ (github.event_name == 'workflow_dispatch' && inputs.release_tag) || github.ref }}
+          ref: ${{ inputs.release_tag }}
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -70,7 +67,7 @@ jobs:
         id: zip
         shell: bash
         run: |
-          release_tag="${{ (github.event_name == 'workflow_dispatch' && inputs.release_tag) || github.ref_name }}"
+          release_tag="${{ inputs.release_tag }}"
           echo "zip_name=WOS_JapaneseMOD-${{ matrix.target_name }}-${release_tag}.zip" >> "$GITHUB_OUTPUT"
 
       - name: Create zip (macOS)
@@ -101,7 +98,7 @@ jobs:
     name: Publish GitHub Release
     needs: build
     runs-on: ubuntu-latest
-    if: ${{ startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && !inputs.dry_run) }}
+    if: ${{ !inputs.dry_run }}
     permissions:
       contents: write
       actions: read
@@ -116,7 +113,7 @@ jobs:
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ (github.event_name == 'workflow_dispatch' && inputs.release_tag) || github.ref_name }}
+          tag_name: ${{ inputs.release_tag }}
           files: dist/*.zip
           overwrite_files: true
           token: ${{ secrets.GITHUB_TOKEN }}
