@@ -13,6 +13,11 @@ on:
         description: "Release tag to build/upload (e.g. v0.2.0). Leave empty to use the current ref."
         required: false
         type: string
+      dry_run:
+        description: "If true, build artifacts only (do not upload to GitHub Release)."
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   build:
@@ -96,7 +101,7 @@ jobs:
     name: Publish GitHub Release
     needs: build
     runs-on: ubuntu-latest
-    if: ${{ startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '') }}
+    if: ${{ startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '' && !inputs.dry_run) }}
     permissions:
       contents: write
       actions: read
