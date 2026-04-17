@@ -3,6 +3,29 @@
 このプロジェクトの変更履歴です。  
 表記は概ね [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に準拠します。
 
+## [0.2.1] - 2026-04-18
+
+### What's New?
+
+- **日本語ローカライズの拡充**: `Sodor_Route_Gameplay` の `locres` を更新し、`James_Gameplay`・`Sodor`・`CSXHeavyHaul` の日本語 `locres` を **Knapford / SODOR の両パッジ**に追加。
+- **「トーマスとゴードン」**: 台詞テロップの位置を、吹き出しの中央に来るよう修正。
+- **地名**: 誤訳を 2019 年発売の電撃ムック「ソドー島Walker」の表記に準じて修正。
+- **ルートマップ**: 各表記のおよそ 6 割を試験的に修正。
+
+### Added
+
+- **新規 `locres`（日本語）**: `James_Gameplay`、`Sodor`、`CSXHeavyHaul`（Knapford / SODOR それぞれに同構成で追加）。
+
+### Changed
+
+- `**Sodor_Route_Gameplay` の `locres`**: 文言の更新・追補。
+- **README**: 概要の整理、ヘッダー／タグラインのレイアウト調整、ダウンロード案内の改善。
+- **GitHub Actions（リリース）**: 手動タグ実行を中心としたワークフローの整理、dry-run 対応、ジョブ分割による同時実行時の競合回避、成果物の OS 表記の明確化。
+
+### Fixed
+
+- **リリースワークフロー**: 権限およびタグ入力まわりの不具合を修正。
+
 ## [0.2.0] - 2026-04-16
 
 ### What's New?
@@ -21,21 +44,25 @@ v0.2.0 以降は、バックアップを **既定で OS のアプリデータ配
 - macOS（移動先）: `~/Library/Application Support/WOS_JapaneseMOD/Backup/`
 
 ### Added
+
 - **Rust 製 CLI への移行**: 旧スクリプト中心の適用フローを、バックアップ→展開→上書き→再パック→書き戻しまで行う CLI に統合。
 - **対話式セットアップ**: 起動時の入力（Knapford / SODOR 選択、必要に応じて `Paks` パス指定など）を対話形式に整理し、入力内容を永続化（`state.json`）。
 - **GitHub Actions による配布 ZIP 生成**: リリース用 ZIP を CI で生成するワークフローを追加。
 
 ### Changed
+
 - **MOD オーバーレイ資産の再構成**: 複数 pak への反映やバックアップ移行を見据えた構成に整理。
 - **ドキュメント強化**: SmartScreen 回避の補足、対話式入力の詳細（Q&A 形式）を README に追記。
 - **CI 設定の整理**: トリガーやジョブ名の調整、Windows の ZIP 作成手順の安定化、Node バージョン固定など。
 - **フォルダ名の正規化**: `Font_licenses` を `font_licenses` に変更。
 
 ### Fixed
+
 - **repak のエラー耐性改善**: `unpack` が非 0 で終了しても、出力が生成されていれば WARN を出して継続する挙動に調整。
 - **終了時の操作性**: Windows / macOS で完了後に Enter 待ちを入れ、ウィンドウが即閉じてログを読めない問題を軽減。
 - **ローカライズ資産更新**: 日本語・SODOR 側の `locres` 更新。
 
 ## [0.1.0] - 2026-04-13
+
 - 初回リリース。
 

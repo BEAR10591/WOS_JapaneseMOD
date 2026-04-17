@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Release tag to build/upload (e.g. v0.2.0). Optional for dry-run."
+        description: "Release tag to build/upload (e.g. v0.2.1). Optional for dry-run."
         required: false
         type: string
       dry_run:
@@ -111,7 +111,7 @@ jobs:
           set -euo pipefail
           tag="${{ inputs.release_tag || github.ref_name }}"
           if [[ "${{ inputs.release_tag }}" == "" && ! "${GITHUB_REF}" =~ ^refs/tags/ ]]; then
-            echo "::error::release_tag is required when publishing from a branch. Set dry_run=true or provide release_tag (e.g. v0.2.0)."
+            echo "::error::release_tag is required when publishing from a branch. Set dry_run=true or provide release_tag (e.g. v0.2.1)."
             exit 1
           fi
           echo "Publishing for tag: $tag"
