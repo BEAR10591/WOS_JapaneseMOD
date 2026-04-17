@@ -2,7 +2,7 @@
 
 ![スクリーンショット](screenshots/screenshot-01.jpg)
 
-<p align="center"><strong>「きかんしゃトーマス™: ソドー島の不思議」向けの日本語表示最適化 MOD です。</strong></p>
+<h3 align="center">「きかんしゃトーマス™: ソドー島の不思議」向けの日本語表示最適化 MOD です。</h3>
 ゲームの `TS2Prototype-WindowsNoEditor.pak` を **repak** で展開・再パックし、MOD 用アセットを反映します。
 
 ### ※ 現時点では翻訳（テキスト）そのものの修正は一部のみ、試験的実装です。今後のアップデートで順次修正範囲を拡大予定です。
