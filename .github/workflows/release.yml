@@ -29,9 +29,11 @@ jobs:
         include:
           - runs_on: windows-latest
             target_name: windows
+            target_label: Windows
             exe_name: WOS_JapaneseMOD.exe
           - runs_on: macos-latest
             target_name: macos
+            target_label: macOS
             exe_name: WOS_JapaneseMOD
 
     steps:
@@ -68,7 +70,7 @@ jobs:
         shell: bash
         run: |
           release_tag="${{ inputs.release_tag || github.ref_name }}"
-          echo "zip_name=WOS_JapaneseMOD-${{ matrix.target_name }}-${release_tag}.zip" >> "$GITHUB_OUTPUT"
+          echo "zip_name=WOS_JapaneseMOD-${{ matrix.target_label }}-${release_tag}.zip" >> "$GITHUB_OUTPUT"
 
       - name: Create zip (macOS)
         if: runner.os != 'Windows'
@@ -91,7 +93,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: WOS_JapaneseMOD-${{ matrix.target_name }}
+          name: WOS_JapaneseMOD-${{ matrix.target_label }}
           path: dist/${{ steps.zip.outputs.zip_name }}
 
   release:
