@@ -4,6 +4,9 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
     inputs:
       release_tag:
@@ -100,7 +103,8 @@ jobs:
     name: Publish GitHub Release
     needs: build
     runs-on: ubuntu-latest
-    if: ${{ !inputs.dry_run && (inputs.release_tag != '' || startsWith(github.ref, 'refs/tags/')) }}
+    # タグ push（v*）: 常に公開。手動実行: dry_run が false かつタグが指定されているときのみ公開。
+    if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && inputs.dry_run == false && (inputs.release_tag != '' || startsWith(github.ref, 'refs/tags/'))) }}
     permissions:
       contents: write
       actions: read
