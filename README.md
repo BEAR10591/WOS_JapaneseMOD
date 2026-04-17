@@ -1,13 +1,14 @@
-# WOS Japanese MOD
-
 ![スクリーンショット](screenshots/screenshot-01.jpg)
 
-<h3 align="center">「きかんしゃトーマス™: ソドー島の不思議」向けの日本語表示最適化 MOD です。</h3>
-ゲームの `TS2Prototype-WindowsNoEditor.pak` を **repak** で展開・再パックし、MOD 用アセットを反映します。
+<h1 align="center">WOS Japanese MOD</h1>
 
-### ※ 現時点では翻訳（テキスト）そのものの修正は一部のみ、試験的実装です。今後のアップデートで順次修正範囲を拡大予定です。
+<p align="center"><b>「きかんしゃトーマス™: ソドー島の不思議」向けの日本語表示最適化 MOD です。</b></p>
 
-補足: 中国語（簡体字）表示についても、可読性が出るよう **適切なウェイトの Noto Sans SC** を使うよう調整しています。
+<p align="center">ゲームの `TS2Prototype-WindowsNoEditor-*.pak` を **repak** で展開・再パックし、MOD 用アセットを反映します。</p>
+
+<p align="center"><b>※ 現時点では翻訳（テキスト）そのものの修正は一部のみ、試験的実装です。今後のアップデートで順次修正範囲を拡大予定です。</b></p>
+
+<p align="center">補足: 中国語（簡体字）表示についても、可読性が出るよう **適切なウェイトの Noto Sans SC** を使うよう調整しています。</p>
 
 ---
 
