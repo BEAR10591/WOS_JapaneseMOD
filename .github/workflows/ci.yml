@@ -48,8 +48,7 @@ jobs:
           # executable
           cp -f "target/release/${{ matrix.exe_name }}" "dist/${{ matrix.target_name }}/${{ matrix.exe_name }}"
           # MOD data
-          cp -R "WOS_JapaneseMOD_Knapford" "dist/${{ matrix.target_name }}/"
-          cp -R "WOS_JapaneseMOD_SODOR" "dist/${{ matrix.target_name }}/"
+          cp -R "MOD" "dist/${{ matrix.target_name }}/"
           # docs/licenses (keep lightweight but useful)
           cp -f "README.md" "dist/${{ matrix.target_name }}/README.md"
           if [ -f "LICENSE" ]; then cp -f "LICENSE" "dist/${{ matrix.target_name }}/LICENSE"; fi

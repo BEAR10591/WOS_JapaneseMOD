@@ -22,40 +22,44 @@
 ダウンロードする zip は、**Windows は `-Windows`、macOS は `-macOS`** が付いたものを選んでください。  
 （リポジトリをクローンして使う場合も、以下の内容はほぼ同じです。）
 
-### v0.1.0 から更新する場合（バックアップ保存先の変更）
+### 旧バージョンから更新する場合（保存先の変更）
 
-v0.1.0 では、バックアップ（`Backup/`）が **展開した ZIP の中**に作られていました。  
-v0.2.0 以降は、バックアップを **既定で OS のアプリデータ配下**に保存します。
+このツールは、更新に伴い **バックアップや作業フォルダの既定保存先**が変わっています。
 
-そのため、v0.1.0 で作った `Backup/` を引き続き使いたい場合は、実行前に **既定の保存先へ移しておいてください**（既定保存先に同名ファイルが既にある場合は上書きに注意）。
+- **v0.1.0**: バックアップ（`Backup/`）が **展開した ZIP の中**に作成される
+- **v0.2.1 まで**: バックアップが **OS のアプリデータ配下**（Windows: `%LOCALAPPDATA%` / macOS: `Application Support`）に作成される
+- **現在**: バックアップと作業フォルダは、**ドキュメント配下の `data_root_dir`** に作成される（対話で変更可）
 
-- Windows（移動先）: `%LOCALAPPDATA%\WOS_JapaneseMOD\Backup\`
-- macOS（移動先）: `~/Library/Application Support/WOS_JapaneseMOD/Backup/`
+v0.2.1 の旧既定保存先に `Backup/` が残っている場合、起動時に検出し、確認の上で **新しい既定保存先へ移行（移動）**します。  
+移行が完了すると、コピー元の `Backup/` は **削除**されます。
 
 ---
 
 ## 同梱物
 
-**MOD データのフォルダ**（`WOS_JapaneseMOD_Knapford/`、`WOS_JapaneseMOD_SODOR/`）は Windows / macOS で共通です。  
+**MOD データのフォルダ**（`MOD/`）は Windows / macOS で共通です。  
 適用処理は **Rust 製 CLI** が行います（バックアップ → 展開 → 上書きコピー → 再パック → ゲームへ書き戻し）。  
 Windows: `WOS_JapaneseMOD.exe` / macOS: `WOS_JapaneseMOD`
 
 ### 設定（共通）
 
 設定は **対話式**です（ツール起動後に案内に従って入力します）。  
-入力した内容は次回以降も使えるように自動保存されます。
+入力した内容は次回以降も使えるように自動保存されます（`state.json`）。
 
-- Windows: `%LOCALAPPDATA%\\WOS_JapaneseMOD\\state.json`
-- macOS: `~/Library/Application Support/WOS_JapaneseMOD/state.json`
+- **`state.json`（設定）の保存先（固定）**
+  - Windows: `%LOCALAPPDATA%\\WOS_JapaneseMOD\\state.json`
+  - macOS: `~/Library/Application Support/WOS_JapaneseMOD/state.json`
 
 ### 対話式の詳細（何を聞かれる？）
 
-起動後は「質問が表示される → 入力して Enter」という流れです。ここでは **よく出る質問**を、**質問→回答（入力例）**の形でまとめます（表示文言はバージョンや環境で多少前後します）。
+起動後は「質問が表示される → 入力して Enter」という流れです（完了時は Enter 待ちをせず、そのまま終了します）。ここでは **よく出る質問**を、**質問→回答（入力例）**の形でまとめます（表示文言はバージョンや環境で多少前後します）。
 
-- **Q. どの MOD を適用しますか？（Knapford / SODOR）**  
-  **A.** `k`（Knapford）または `s`（SODOR）を入力します。  
-  - 入力例: `k`  
-  - 補足: どちらもゲームに入る pak 名は同じため、**最後に適用した方**が反映されます（後述の注意事項も参照）。
+- **Q. データ保存先（`data_root_dir`）とは？**  
+  **A.** `Backup/`（バックアップ）と `unpacked/`（作業フォルダ）を作成する **保存先ディレクトリ**です。  
+  - 既定: **ドキュメント配下の `WOS_JapaneseMOD`**
+  - 構成例:
+    - `data_root_dir\\Backup\\`
+    - `data_root_dir\\unpacked\\`
 
 - **Q. ゲームの `Paks` フォルダはどこですか？（自動検出に失敗した場合）**  
   **A.** `Paks` ディレクトリの **フルパス**を入力します。  
@@ -68,12 +72,12 @@ Windows: `WOS_JapaneseMOD.exe` / macOS: `WOS_JapaneseMOD`
 
 - **Q. バックアップはどこに作られますか？**  
   **A.** 初回実行時に、元の pak を `Backup` 配下へ保存します（既にあればスキップされます）。  
-  - 既定の保存先（Windows）: `%LOCALAPPDATA%\WOS_JapaneseMOD\Backup\`  
-  - 既定の保存先（macOS）: `~/Library/Application Support/WOS_JapaneseMOD/Backup/`
+  - 既定の保存先: `data_root_dir\\Backup\\`
 
 - **Q. 作業フォルダ（展開先）はどこですか？**  
-  **A.** 展開した ZIP の中に作られます（成功時に自動削除される設定の場合があります）。  
-  - 例: `WOS_pack_work_Knapford/` / `WOS_pack_work_SODOR/`
+  **A.** 保存先（`data_root_dir`）の配下に `unpacked/` として作られます。  
+  既に展開済みフォルダがある場合は、`repak unpack` をスキップして **既存のものを再利用**します。  
+  - 例: `unpacked/`
 
 - **Q. 途中で失敗した／止まったように見える**  
   **A.** まずは **ゲームと Steam を終了**してから再実行してください。次に、`Paks` のパス入力が必要だった可能性があるので、案内が出たら **フルパス**を入力してください。  
@@ -98,23 +102,24 @@ Windows: `WOS_JapaneseMOD.exe` / macOS: `WOS_JapaneseMOD`
 
 1. **zip を展開する**  
    デスクトップなど、分かりやすい場所にフォルダごと置いてください。  
-   （中に `WOS_JapaneseMOD.exe` と `WOS_JapaneseMOD_…` フォルダがある状態になっていれば OK です。）
+   （中に `WOS_JapaneseMOD.exe` と `MOD/` フォルダがある状態になっていれば OK です。）
 
 2. **`WOS_JapaneseMOD.exe` を実行する**  
-   起動後に表示される案内に従い、**k（Knapford）または s（SODOR）** を押して選択します。  
+   起動後に表示される案内に従って入力します。  
    黒い画面（コマンドプロンプト）が開き、処理が進みます。完了まで **閉じずに待ち**ます。
 
 3. **（必要なら）`Paks` の場所を入力する**  
    自動検出できない環境では、案内に従って **`Paks` ディレクトリのフルパス**を入力します。
 
 4. **初回だけバックアップが作られる**  
-   ゲーム本体の元 pak が、既定で `%LOCALAPPDATA%\WOS_JapaneseMOD\Backup\` に保存されます。**元に戻したいとき**は、ここに保存されたファイルをゲームの `…\Paks\` に戻す方法を検討してください（自己責任です）。
+   ゲーム本体の元 pak が、既定で `data_root_dir\\Backup\\` に保存されます。**元に戻したいとき**は、ここに保存されたファイルをゲームの `…\Paks\` に戻す方法を検討してください（自己責任です）。
    
    ※ **ゲーム本体がアップデート**されると、ゲーム側の pak が新しいものに置き換わることがあります。その場合は **もう一度 `WOS_JapaneseMOD.exe` を実行して MOD を再適用**してください。  
-   ※ アップデート後に **バックアップも取り直したい**場合は、実行前に `%LOCALAPPDATA%\WOS_JapaneseMOD\Backup\` を **一度退避/削除**してから実行してください（バックアップが存在すると再作成をスキップします）。
+   ※ アップデート後に **バックアップも取り直したい**場合は、実行前に `data_root_dir\\Backup\\` を **一度退避/削除**してから実行してください（バックアップが存在すると再作成をスキップします）。
 
 5. **「完了」と出たら終了**  
-   ツールが、再パックした pak をゲームの `Paks\` に書き戻して差し替えます（3種）。
+   ツールが、再パックした pak をゲームの `Paks\` に書き戻して差し替えます（3種）。  
+   表示されたら **このウィンドウ（タブ）は閉じて大丈夫**です（Enter を押す必要はありません）。
 
 ### うまくいかないとき
 
@@ -132,12 +137,13 @@ Windows: `WOS_JapaneseMOD.exe` / macOS: `WOS_JapaneseMOD`
 1. **repak** の準備（初回は GitHub から Windows 用を自動ダウンロードして配置。2 回目以降は再利用）  
 1. ゲームの **元 pak（3種）** をバックアップに保存（**初回のみ**。既にあればスキップ）  
 2. バックアップから pak を作業フォルダへ展開  
-3. `WOS_JapaneseMOD_Knapford/` または `WOS_JapaneseMOD_SODOR/` の内容を **上書きコピー**  
+3. `MOD/` の内容を **上書きコピー**  
 4. **再パック**して、ゲームの `Paks\` に **直接書き戻し**（3種）  
-5. 成功したら、作業フォルダを削除（`cleanup: true` の場合）
+5. （任意）成功したら、作業フォルダを削除（対話で選択。**既定は削除しない**）
 
-- **バックアップ**: `%LOCALAPPDATA%\WOS_JapaneseMOD\Backup\`  
-- **作業フォルダ**: 展開した ZIP の中（`WOS_pack_work_Knapford\` / `WOS_pack_work_SODOR\`）。成功時は削除されます（失敗時に残ることがあります）。
+- **保存先（親ディレクトリ）**: `data_root_dir`（既定はドキュメント配下）  
+- **バックアップ**: `data_root_dir\\Backup\\`  
+- **作業フォルダ**: `data_root_dir\\unpacked\\`（基本は残すことを推奨。必要なら削除できます）
 
 ---
 
@@ -169,7 +175,6 @@ macOS では、`brew` で `repak` を入れた上で、同梱の `WOS_JapaneseMO
 ## 注意事項
 
 - ゲームファイルの改変は **自己責任** です。必ず **`Backup`** の有無を確認してください。
-- Knapford 用と SODOR 用では **作業フォルダと MOD フォルダは別**ですが、**ゲームに入るファイル名は同じ** `TS2Prototype-WindowsNoEditor.pak` です。**最後に実行した方**がゲームに反映されます。
 - オンライン規約・アンチチート等については、ご利用環境に応じてご確認ください。
 
 ---

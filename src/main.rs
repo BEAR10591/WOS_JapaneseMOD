@@ -15,18 +15,12 @@ use walkdir::WalkDir;
 #[cfg(windows)]
 use zip::ZipArchive;
 
-#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
-#[serde(rename_all = "lowercase")]
-enum Variant {
-    Knapford,
-    Sodor,
-}
-
 #[derive(Debug, Default, Deserialize, Serialize, Clone)]
 struct PersistentState {
     repak_path: Option<String>,
     paks_dir: Option<String>,
-    backup_dir: Option<String>,
+    #[serde(rename = "data_root_dir", alias = "backup_dir")]
+    data_root_dir: Option<String>,
     cleanup: Option<bool>,
 }
 
@@ -44,7 +38,6 @@ fn main() -> Result<()> {
     // Also, the executable may live under dist/, so we must locate the actual repo root.
     let repo_root = repo_root_dir().context("Failed to resolve repo root directory")?;
     let mut state = load_state().unwrap_or_default();
-    let variant = prompt_variant()?;
 
     // repak is not configured via YAML.
     // If repak is not found, we will ask interactively what to do.
@@ -56,9 +49,10 @@ fn main() -> Result<()> {
     // If the default Paks directory is not found, ask interactively.
     let game_paths = resolve_game_paks_interactive(&mut state)?;
 
-    // backup_dir is not configured via YAML.
-    // Ask interactively whether the default backup directory is OK.
-    let backup_dir = resolve_backup_dir_interactive(&mut state)?;
+    // data_root_dir is not configured via YAML.
+    // Ask interactively where to place Backup/ and workdir (unpacked/).
+    let data_root_dir = resolve_data_root_dir_interactive(&mut state)?;
+    let backup_dir = data_root_dir.join("Backup");
     fs::create_dir_all(&backup_dir).context("Failed to create backup directory")?;
 
     let backups = BackupPaths {
@@ -71,10 +65,9 @@ fn main() -> Result<()> {
     backup_if_missing(&game_paths.sodor_core, &backups.sodor_core)?;
     backup_if_missing(&game_paths.james_core, &backups.james_core)?;
 
-    let pack_work_root = match variant {
-        Variant::Knapford => repo_root.join("WOS_pack_work_Knapford"),
-        Variant::Sodor => repo_root.join("WOS_pack_work_SODOR"),
-    };
+    // Work directory is created alongside the Backup directory.
+    // This keeps large unpacked data out of the repo folder.
+    let pack_work_root = data_root_dir.join("unpacked");
 
     let unpack = UnpackDirs {
         main: pack_work_root.join("TS2Prototype-WindowsNoEditor"),
@@ -104,7 +97,7 @@ fn main() -> Result<()> {
         "James coredata",
     )?;
 
-    apply_overlay(&repo_root, variant, &unpack)?;
+    apply_overlay(&repo_root, &unpack)?;
 
     // Pack
     repak_pack(&repak, &unpack.main, &outputs.main, "main pak")?;
@@ -128,58 +121,15 @@ fn main() -> Result<()> {
     // Install step is implicit because repak pack writes directly to game_paths.*
 
     if resolve_cleanup_interactive(&mut state)? {
-        cleanup_workdirs(&repo_root)?;
+        cleanup_workdirs(&pack_work_root)?;
     }
 
     save_state(&state).ok();
 
     println!();
     println!("[OK] 完了: ゲームに配置しました。");
-    #[cfg(windows)]
-    {
-        println!("       Enter で閉じます...");
-        let _ = std::io::stdin().read_line(&mut String::new());
-    }
-    #[cfg(target_os = "macos")]
-    {
-        println!("       Enter で閉じます...");
-        let _ = std::io::stdin().read_line(&mut String::new());
-    }
+    println!("       このウィンドウ（タブ）は閉じて大丈夫です。");
     Ok(())
-}
-
-fn prompt_variant() -> Result<Variant> {
-    println!();
-    println!("[select] 適用する英字フォントを選択してください");
-    println!("         k: Knapford / s: SODOR");
-    loop {
-        print!("         入力 (k/s): ");
-        io::stdout().flush().ok();
-
-        let mut line = String::new();
-        io::stdin()
-            .read_line(&mut line)
-            .context("Failed to read input")?;
-
-        let c = line
-            .chars()
-            .find(|ch| !ch.is_whitespace())
-            .map(|ch| ch.to_ascii_lowercase());
-
-        match c {
-            Some('k') => {
-                println!("         -> Knapford");
-                return Ok(Variant::Knapford);
-            }
-            Some('s') => {
-                println!("         -> SODOR");
-                return Ok(Variant::Sodor);
-            }
-            _ => {
-                eprintln!("         k または s を入力してください。");
-            }
-        }
-    }
 }
 
 fn app_root_dir() -> Result<PathBuf> {
@@ -197,7 +147,7 @@ fn repo_root_dir() -> Result<PathBuf> {
     // Strategy:
     // - Start from the executable directory (best for double-click builds).
     // - Walk up a few levels and pick the first directory that looks like the repo:
-    //   it contains at least one of the MOD overlay directories.
+    //   it contains the MOD overlay directory.
     // - Fallback to current_dir (useful for `cargo run`).
 
     let start = app_root_dir()?;
@@ -218,9 +168,8 @@ fn find_repo_root(start: &Path) -> Option<PathBuf> {
     let mut cur = Some(start);
     for _ in 0..8 {
         let dir = cur?;
-        let kn = dir.join("WOS_JapaneseMOD_Knapford");
-        let so = dir.join("WOS_JapaneseMOD_SODOR");
-        if kn.is_dir() || so.is_dir() {
+        let mod_dir = dir.join("MOD");
+        if mod_dir.is_dir() {
             return Some(dir.to_path_buf());
         }
         cur = dir.parent();
@@ -263,54 +212,311 @@ fn verify_exists(p: &Path) -> Result<()> {
     Ok(())
 }
 
-fn default_backup_dir() -> Result<PathBuf> {
+fn default_documents_data_root_dir() -> Result<PathBuf> {
+    let docs = documents_dir()?;
+    Ok(docs.join("WOS_JapaneseMOD"))
+}
+
+fn documents_dir() -> Result<PathBuf> {
     #[cfg(windows)]
     {
-        let base =
-            std::env::var_os("LOCALAPPDATA").ok_or_else(|| anyhow!("LOCALAPPDATA is not set"))?;
-        return Ok(PathBuf::from(base).join("WOS_JapaneseMOD").join("Backup"));
+        // Prefer USERPROFILE\Documents.
+        if let Some(home) = std::env::var_os("USERPROFILE") {
+            return Ok(PathBuf::from(home).join("Documents"));
+        }
+        // Fallback: HOMEDRIVE + HOMEPATH.
+        let drive = std::env::var_os("HOMEDRIVE").ok_or_else(|| anyhow!("HOMEDRIVE is not set"))?;
+        let path = std::env::var_os("HOMEPATH").ok_or_else(|| anyhow!("HOMEPATH is not set"))?;
+        return Ok(PathBuf::from(drive).join(path).join("Documents"));
     }
 
     #[cfg(not(windows))]
     {
         let home = std::env::var_os("HOME").ok_or_else(|| anyhow!("HOME is not set"))?;
-        return Ok(PathBuf::from(home)
-            .join("Library")
-            .join("Application Support")
-            .join("WOS_JapaneseMOD")
-            .join("Backup"));
+        Ok(PathBuf::from(home).join("Documents"))
     }
 }
 
-fn resolve_backup_dir_interactive(state: &mut PersistentState) -> Result<PathBuf> {
-    if let Some(dir) = state.backup_dir.as_deref() {
-        return Ok(PathBuf::from(dir));
+fn legacy_default_backup_dirs() -> Result<Vec<PathBuf>> {
+    #[cfg(windows)]
+    {
+        let base =
+            std::env::var_os("LOCALAPPDATA").ok_or_else(|| anyhow!("LOCALAPPDATA is not set"))?;
+        return Ok(vec![PathBuf::from(base)
+            .join("WOS_JapaneseMOD")
+            .join("Backup")]);
     }
 
-    let def = default_backup_dir()?;
-    println!();
-    println!("[select] バックアップ保存先");
-    println!("         {}", def.display());
-
-    let ok = prompt_yes_no("         この場所でいいですか？ (y/n): ")?;
-    if ok {
-        state.backup_dir = Some(def.to_string_lossy().to_string());
-        save_state(state).ok();
-        return Ok(def);
+    #[cfg(not(windows))]
+    {
+        let home = std::env::var_os("HOME").ok_or_else(|| anyhow!("HOME is not set"))?;
+        return Ok(vec![PathBuf::from(home)
+            .join("Library")
+            .join("Application Support")
+            .join("WOS_JapaneseMOD")
+            .join("Backup")]);
     }
+}
 
-    loop {
-        let raw = prompt_path("         backup_dir のフルパスを入力してください: ")?;
-        let dir = expand_path(&raw.to_string_lossy())?;
-        if dir.as_os_str().is_empty() {
-            eprintln!("         パスを入力してください。");
+fn legacy_default_data_root_dirs() -> Result<Vec<PathBuf>> {
+    Ok(legacy_default_backup_dirs()?
+        .into_iter()
+        .filter_map(|p| p.parent().map(Path::to_path_buf))
+        .collect())
+}
+
+fn copy_backup_files(src: &Path, dst: &Path) -> Result<usize> {
+    if src == dst {
+        return Ok(0);
+    }
+    if !src.is_dir() {
+        return Ok(0);
+    }
+    fs::create_dir_all(dst).ok();
+
+    let mut copied = 0usize;
+    for entry in fs::read_dir(src).with_context(|| format!("Failed to read dir: {}", src.display()))?
+    {
+        let entry = entry?;
+        let path = entry.path();
+        if !path.is_file() {
             continue;
         }
-        // Allow non-existent; we'll create it later.
-        state.backup_dir = Some(dir.to_string_lossy().to_string());
-        save_state(state).ok();
-        return Ok(dir);
+        if path.extension().and_then(OsStr::to_str) != Some("pak") {
+            continue;
+        }
+        let name = path.file_name().and_then(OsStr::to_str).unwrap_or("backup.pak");
+        let out = dst.join(name);
+        // Do not overwrite existing backups.
+        if out.is_file() {
+            continue;
+        }
+        copy_file(&path, &out)?;
+        copied += 1;
     }
+    Ok(copied)
+}
+
+fn move_backup_best_effort(src_backup_dir: &Path, dst_backup_dir: &Path) -> Result<usize> {
+    // 1) Copy .pak files (do not overwrite).
+    let copied = copy_backup_files(src_backup_dir, dst_backup_dir)?;
+
+    // 2) Verify all .pak files in src exist in dst (either pre-existing or copied).
+    if src_backup_dir.is_dir() {
+        for entry in fs::read_dir(src_backup_dir)
+            .with_context(|| format!("Failed to read dir: {}", src_backup_dir.display()))?
+        {
+            let entry = entry?;
+            let path = entry.path();
+            if !path.is_file() {
+                continue;
+            }
+            if path.extension().and_then(OsStr::to_str) != Some("pak") {
+                continue;
+            }
+            let name = path.file_name().and_then(OsStr::to_str).unwrap_or("");
+            let dst = dst_backup_dir.join(name);
+            if !dst.is_file() {
+                bail!(
+                    "Backup migration verification failed: {} was not created",
+                    dst.display()
+                );
+            }
+        }
+    }
+
+    // 3) After successful verification, delete the source Backup directory entirely.
+    // This avoids leaving empty dirs or non-pak leftovers behind.
+    if src_backup_dir.is_dir() {
+        // Retry a few times in case of transient "Directory not empty" errors.
+        let mut last_err: Option<std::io::Error> = None;
+        for _ in 0..5 {
+            match fs::remove_dir_all(src_backup_dir) {
+                Ok(()) => {
+                    last_err = None;
+                    break;
+                }
+                Err(e) => {
+                    last_err = Some(e);
+                    std::thread::sleep(Duration::from_millis(200));
+                }
+            }
+        }
+        if src_backup_dir.exists() {
+            if let Some(e) = last_err {
+                bail!(
+                    "Failed to delete source Backup dir after migration: {} ({e})",
+                    src_backup_dir.display()
+                );
+            }
+            bail!(
+                "Failed to delete source Backup dir after migration: {}",
+                src_backup_dir.display()
+            );
+        }
+    }
+
+    Ok(copied)
+}
+
+fn resolve_data_root_dir_interactive(state: &mut PersistentState) -> Result<PathBuf> {
+    // Note: `state.data_root_dir` used to store the full backup directory (ending with /Backup)
+    // From now on, it stores the *parent* directory where both `Backup/` and `unpacked/` live.
+
+    // If user previously specified a path, ask whether to keep using it.
+    if let Some(raw) = state.data_root_dir.as_deref() {
+        let existing_raw = PathBuf::from(raw);
+        if existing_raw.as_os_str().is_empty() {
+            state.data_root_dir = None;
+        } else {
+            // Backward compatibility: if it points to ".../Backup", convert to parent.
+            let existing_root = if existing_raw
+                .file_name()
+                .and_then(OsStr::to_str)
+                .map(|s| s.eq_ignore_ascii_case("Backup"))
+                .unwrap_or(false)
+            {
+                existing_raw.parent().map(Path::to_path_buf).unwrap_or(existing_raw)
+            } else {
+                existing_raw
+            };
+
+            println!();
+            println!("[select] データ保存先（前回設定）");
+            println!("         {}", existing_root.display());
+            println!("         （この中に `Backup/` と `unpacked/` を作成します）");
+            let keep = prompt_yes_no("         引き続きこの場所を使用しますか？ (y/n): ")?;
+            if keep {
+                // Persist normalized root.
+                state.data_root_dir = Some(existing_root.to_string_lossy().to_string());
+                save_state(state).ok();
+                // If the chosen root is a legacy default root, offer migration to the new default.
+                return maybe_migrate_legacy_data_to_new_default(state, existing_root);
+            }
+            // User chose not to keep using it → allow choosing new root, with optional copy.
+            return choose_new_data_root_dir_with_optional_copy(state, Some(&existing_root));
+        }
+    }
+
+    choose_new_data_root_dir_with_optional_copy(state, None)
+}
+
+fn maybe_migrate_legacy_data_to_new_default(
+    state: &mut PersistentState,
+    chosen_root: PathBuf,
+) -> Result<PathBuf> {
+    // If the chosen root is one of the legacy default roots AND it contains state/backup,
+    // offer moving everything to the new default root (Documents/WOS_JapaneseMOD).
+    let legacy_roots = legacy_default_data_root_dirs().unwrap_or_default();
+    let is_legacy_root = legacy_roots.iter().any(|p| *p == chosen_root);
+    if !is_legacy_root {
+        return Ok(chosen_root);
+    }
+
+    let legacy_backup = chosen_root.join("Backup");
+    let has_legacy = legacy_backup.is_dir() && dir_has_any_file(&legacy_backup)?;
+    if !has_legacy {
+        return Ok(chosen_root);
+    }
+
+    let new_def = default_documents_data_root_dir()?;
+    if new_def == chosen_root {
+        return Ok(chosen_root);
+    }
+
+    println!();
+    println!("[select] 旧保存先の移行");
+    println!("         旧: {}", chosen_root.display());
+    println!("         新: {}", new_def.display());
+    println!("         ※ `Backup/` を新しい既定保存先へ移動します。");
+    if !prompt_yes_no("         移動しますか？ (y/n): ")? {
+        return Ok(chosen_root);
+    }
+
+    fs::create_dir_all(&new_def).ok();
+    let copied = move_backup_best_effort(&legacy_backup, &new_def.join("Backup"))?;
+    let _ = copied; // keep silent; we print in caller flow if needed later.
+
+    state.data_root_dir = Some(new_def.to_string_lossy().to_string());
+    save_state(state).ok();
+    Ok(new_def)
+}
+
+fn choose_new_data_root_dir_with_optional_copy(
+    state: &mut PersistentState,
+    prev_root_dir: Option<&Path>,
+) -> Result<PathBuf> {
+    let def_root = default_documents_data_root_dir()?;
+
+    // If legacy default contains backups, mention it and offer copying.
+    let mut legacy_root_with_data: Option<PathBuf> = None;
+    if prev_root_dir.is_none() {
+        for root in legacy_default_data_root_dirs()? {
+            let has_state = root.join("state.json").is_file();
+            let backup = root.join("Backup");
+            let has_backup = backup.is_dir() && dir_has_any_file(&backup).unwrap_or(false);
+            if has_state || has_backup {
+                legacy_root_with_data = Some(root);
+                break;
+            }
+        }
+    }
+
+    println!();
+    println!("[select] データ保存先（Backup と作業フォルダの保存先）");
+    println!("         既定: {}", def_root.display());
+    println!("         （この中に `Backup/` と `unpacked/` を作成します）");
+    println!("         例: {}", def_root.display());
+
+    println!();
+    println!("       y: 既定（ドキュメント）を使用 / n: 別の場所を指定");
+    let use_default = prompt_yes_no("         既定の保存先を使用しますか？ (y/n): ")?;
+    let chosen_root = if use_default {
+        def_root
+    } else {
+        loop {
+            let raw = prompt_path("         データ保存先のフルパスを入力してください: ")?;
+            let dir = expand_path(&raw.to_string_lossy())?;
+            if dir.as_os_str().is_empty() {
+                eprintln!("         パスを入力してください。");
+                continue;
+            }
+            break dir;
+        }
+    };
+
+    // Optional copy from previous/legacy backup directory if it contains backups.
+    let prev_backup_dir = prev_root_dir.map(|p| p.join("Backup"));
+    let chosen_backup_dir = chosen_root.join("Backup");
+    let copy_src_backup_dir = if let Some(p) = prev_backup_dir.as_ref() {
+        if p.is_dir() && dir_has_any_file(p).unwrap_or(false) {
+            Some(p.to_path_buf())
+        } else {
+            None
+        }
+    } else {
+        legacy_root_with_data.as_ref().map(|r| r.join("Backup"))
+    };
+    if let Some(src_backup_dir) = copy_src_backup_dir {
+        println!();
+        if let Some(ref legacy_root) = legacy_root_with_data {
+            println!("[info] 旧バージョン（v0.2.1）の既定保存先にバックアップが見つかりました:");
+            println!("       {}", legacy_root.display());
+            println!();
+        }
+        println!("[select] バックアップ移行");
+        println!("         元: {}", src_backup_dir.display());
+        println!("         先: {}", chosen_backup_dir.display());
+        println!("         ※ 移行後、コピー元の `Backup/` は削除されます。");
+        if prompt_yes_no("         旧保存先の .pak を新しい保存先へ移動しますか？ (y/n): ")? {
+            let copied = move_backup_best_effort(&src_backup_dir, &chosen_backup_dir)?;
+            println!("       移動: {copied} ファイル");
+        }
+    }
+
+    state.data_root_dir = Some(chosen_root.to_string_lossy().to_string());
+    save_state(state).ok();
+    Ok(chosen_root)
 }
 
 fn backup_if_missing(src: &Path, dst: &Path) -> Result<()> {
@@ -351,6 +557,15 @@ fn unpack_one(repak: &Path, pak: &Path, out: &Path, label: &str) -> Result<()> {
     if !pak.is_file() {
         bail!("Backup pak missing: {}", pak.display());
     }
+
+    // If the output directory already has files, reuse it and skip unpack.
+    // This is useful when the previous run stopped mid-way; we can continue.
+    if out.is_dir() && dir_has_any_file(out)? {
+        println!("       既存の展開済みフォルダを使用します（unpack をスキップ）");
+        println!("       展開先: {}", out.display());
+        return Ok(());
+    }
+
     fs::create_dir_all(out)?;
 
     let status = Command::new(repak)
@@ -388,15 +603,11 @@ fn dir_has_any_file(dir: &Path) -> Result<bool> {
     Ok(false)
 }
 
-fn apply_overlay(repo_root: &Path, variant: Variant, unpack: &UnpackDirs) -> Result<()> {
+fn apply_overlay(repo_root: &Path, unpack: &UnpackDirs) -> Result<()> {
     println!();
     println!("[overlay] MOD を pak 展開先 (3種) に上書きコピー ...");
 
-    let base = match variant {
-        Variant::Knapford => repo_root.join("WOS_JapaneseMOD_Knapford"),
-        Variant::Sodor => repo_root.join("WOS_JapaneseMOD_SODOR"),
-    };
-
+    let base = repo_root.join("MOD");
     let overlay_main = base.join("TS2Prototype-WindowsNoEditor");
     let overlay_sodor = base.join("TS2Prototype-WindowsNoEditor-Sodor-coredata");
     let overlay_james = base.join("TS2Prototype-WindowsNoEditor-James-coredata");
@@ -524,39 +735,40 @@ fn repak_pack(repak: &Path, input_dir: &Path, output_pak: &Path, label: &str) ->
     Ok(())
 }
 
-fn cleanup_workdirs(repo_root: &Path) -> Result<()> {
+fn cleanup_workdirs(pack_work_root: &Path) -> Result<()> {
     println!();
     println!(
-        "[cleanup] WOS_pack_work_Knapford / WOS_pack_work_SODOR をフォルダごと削除（容量削減） ..."
+        "[cleanup] unpacked をフォルダごと削除（容量削減） ...\n       {}",
+        pack_work_root.display()
     );
-    for d in ["WOS_pack_work_Knapford", "WOS_pack_work_SODOR"] {
-        let p = repo_root.join(d);
-        if p.is_dir() {
-            // Retry a few times in case of transient "Directory not empty" (macOS: os error 66)
-            let mut last_err: Option<std::io::Error> = None;
-            let mut ok = false;
-            for _ in 0..5 {
-                match fs::remove_dir_all(&p) {
-                    Ok(()) => {
-                        ok = true;
-                        break;
-                    }
-                    Err(e) => {
-                        last_err = Some(e);
-                        std::thread::sleep(Duration::from_millis(200));
-                    }
+    if pack_work_root.is_dir() {
+        // Retry a few times in case of transient "Directory not empty" (macOS: os error 66)
+        let mut last_err: Option<std::io::Error> = None;
+        let mut ok = false;
+        for _ in 0..5 {
+            match fs::remove_dir_all(pack_work_root) {
+                Ok(()) => {
+                    ok = true;
+                    break;
+                }
+                Err(e) => {
+                    last_err = Some(e);
+                    std::thread::sleep(Duration::from_millis(200));
                 }
             }
-            if ok && !p.exists() {
-                println!("       削除: {}", p.display());
-            } else if let Some(e) = last_err {
-                eprintln!(
-                    "[WARN] 作業フォルダの削除に失敗しました: {} ({e})",
-                    p.display()
-                );
-            } else {
-                eprintln!("[WARN] 作業フォルダの削除に失敗しました: {}", p.display());
-            }
+        }
+        if ok && !pack_work_root.exists() {
+            println!("       削除: {}", pack_work_root.display());
+        } else if let Some(e) = last_err {
+            eprintln!(
+                "[WARN] 作業フォルダの削除に失敗しました: {} ({e})",
+                pack_work_root.display()
+            );
+        } else {
+            eprintln!(
+                "[WARN] 作業フォルダの削除に失敗しました: {}",
+                pack_work_root.display()
+            );
         }
     }
     Ok(())
@@ -566,12 +778,13 @@ fn resolve_cleanup_interactive(state: &mut PersistentState) -> Result<bool> {
     println!();
     println!("[select] 後処理");
     let default_label = match state.cleanup {
-        Some(false) => "いいえ",
-        _ => "はい",
+        Some(true) => "はい",
+        _ => "いいえ",
     };
     println!(
-        "         作業フォルダ（WOS_pack_work_*）を削除しますか？（既定: {default_label}）"
+        "         作業フォルダ（unpacked）を削除しますか？（既定: {default_label}）"
     );
+    println!("         ※ 原因調査や再実行のため、基本的には削除しないことを推奨します。");
     let v = prompt_yes_no("         削除する (y/n): ")?;
     state.cleanup = Some(v);
     save_state(state).ok();
@@ -676,7 +889,7 @@ fn detect_default_game_pak_dir() -> Result<Option<PathBuf>> {
     }
 }
 
-fn state_dir() -> Result<PathBuf> {
+fn legacy_state_dir() -> Result<PathBuf> {
     #[cfg(windows)]
     {
         let base =
@@ -694,24 +907,24 @@ fn state_dir() -> Result<PathBuf> {
     }
 }
 
-fn state_path() -> Result<PathBuf> {
-    Ok(state_dir()?.join("state.json"))
-}
-
 fn load_state() -> Result<PersistentState> {
-    let path = state_path()?;
-    if !path.is_file() {
+    let legacy = legacy_state_dir()?.join("state.json");
+    if !legacy.is_file() {
         return Ok(PersistentState::default());
     }
-    let s = fs::read_to_string(&path)
-        .with_context(|| format!("Failed to read state: {}", path.display()))?;
+    let s = fs::read_to_string(&legacy)
+        .with_context(|| format!("Failed to read state: {}", legacy.display()))?;
     let st: PersistentState = serde_json::from_str(&s)
-        .with_context(|| format!("Invalid state JSON: {}", path.display()))?;
+        .with_context(|| format!("Invalid state JSON: {}", legacy.display()))?;
     Ok(st)
 }
 
 fn save_state(state: &PersistentState) -> Result<()> {
-    let path = state_path()?;
+    let path = legacy_state_dir()?.join("state.json");
+    save_state_at(state, &path)
+}
+
+fn save_state_at(state: &PersistentState, path: &Path) -> Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
             .with_context(|| format!("Failed to create state dir: {}", parent.display()))?;
