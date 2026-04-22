@@ -3,6 +3,12 @@
 このプロジェクトの変更履歴です。  
 表記は概ね [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に準拠します。
 
+## [0.3.0] - Unreleased
+
+### Changed
+
+- **フォント資産の更新**: 日本語表示向けのフォント関連アセットを更新・整理。
+
 ## [0.2.1] - 2026-04-18
 
 ### What's New?
