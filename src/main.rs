@@ -3,7 +3,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{anyhow, bail, Context, Result};
 use clap::Parser;
@@ -61,10 +61,6 @@ fn main() -> Result<()> {
         james_core: backup_dir.join("TS2Prototype-WindowsNoEditor-James-coredata.pak"),
     };
 
-    backup_if_missing(&game_paths.main, &backups.main)?;
-    backup_if_missing(&game_paths.sodor_core, &backups.sodor_core)?;
-    backup_if_missing(&game_paths.james_core, &backups.james_core)?;
-
     // Work directory is created alongside the Backup directory.
     // This keeps large unpacked data out of the repo folder.
     let pack_work_root = data_root_dir.join("unpacked");
@@ -74,6 +70,21 @@ fn main() -> Result<()> {
         sodor_core: pack_work_root.join("TS2Prototype-WindowsNoEditor-Sodor-coredata"),
         james_core: pack_work_root.join("TS2Prototype-WindowsNoEditor-James-coredata"),
     };
+
+    // If the game has been updated, old Backup/unpacked may be incompatible.
+    // In that case, forcibly recreate both directories so the user doesn't have to delete them manually.
+    let forced_recreate = maybe_force_recreate_backup_and_unpacked_for_game_update(
+        &game_paths,
+        &backup_dir,
+        &backups,
+        &pack_work_root,
+    )?;
+
+    if !forced_recreate {
+        backup_if_missing(&game_paths.main, &backups.main)?;
+        backup_if_missing(&game_paths.sodor_core, &backups.sodor_core)?;
+        backup_if_missing(&game_paths.james_core, &backups.james_core)?;
+    }
 
     // Output paks are written directly into the game's Paks directory
     // (i.e., same paths as the files that will be replaced).
@@ -546,6 +557,191 @@ fn copy_file(src: &Path, dst: &Path) -> Result<()> {
     fs::copy(src, dst)
         .with_context(|| format!("copy failed: {} -> {}", src.display(), dst.display()))?;
     Ok(())
+}
+
+// ============================================================
+// Game update detection (JST cutoffs) and forced recreation
+// ============================================================
+
+/// When the game-side `.pak` is created at/after this JST timestamp,
+/// and existing Backup `.pak` is created at/before the "old" timestamp,
+/// we treat it as outdated and forcibly recreate both Backup/ and unpacked/.
+///
+/// Update these two constants for future game updates.
+const GAME_PAK_UPDATED_AT_OR_AFTER_JST: (i32, u32, u32, u32, u32, u32) = (2026, 4, 27, 19, 0, 0);
+const BACKUP_PAK_OLD_AT_OR_BEFORE_JST: (i32, u32, u32, u32, u32, u32) = (2026, 4, 27, 18, 59, 59);
+
+fn maybe_force_recreate_backup_and_unpacked_for_game_update(
+    game_paths: &GamePaths,
+    backup_dir: &Path,
+    backups: &BackupPaths,
+    pack_work_root: &Path,
+) -> Result<bool> {
+    let game_updated_threshold =
+        system_time_from_jst_tuple(GAME_PAK_UPDATED_AT_OR_AFTER_JST).context("Invalid JST threshold")?;
+    let old_threshold =
+        system_time_from_jst_tuple(BACKUP_PAK_OLD_AT_OR_BEFORE_JST).context("Invalid JST threshold")?;
+
+    // Use the main pak as the update indicator (game updates should change it).
+    let Some(game_pak_created) = file_created_or_modified_time(&game_paths.main)? else {
+        // If we can't read metadata, do nothing (keep backward behavior).
+        return Ok(false);
+    };
+    if game_pak_created < game_updated_threshold {
+        return Ok(false);
+    }
+
+    // Only consider forced recreation if there's something to recreate.
+    let has_existing_backup = backup_dir.is_dir() && dir_has_any_file(backup_dir).unwrap_or(false);
+    let has_existing_unpacked =
+        pack_work_root.is_dir() && dir_has_any_file(pack_work_root).unwrap_or(false);
+    if !has_existing_backup && !has_existing_unpacked {
+        return Ok(false);
+    }
+
+    // If ANY Backup `.pak` looks "old", we force recreate both Backup/ and unpacked/.
+    let mut outdated = false;
+
+    for p in [&backups.main, &backups.sodor_core, &backups.james_core] {
+        if !p.is_file() {
+            continue;
+        }
+        if let Some(t) = file_created_or_modified_time(p)? {
+            if t <= old_threshold {
+                outdated = true;
+            }
+        }
+    }
+
+    if !outdated {
+        return Ok(false);
+    }
+
+    println!();
+    println!("[update] ゲーム側の更新を検出しました。旧バージョンの Backup/unpacked を作り直します。");
+
+    // Delete unpacked first (largest), then backup.
+    remove_dir_all_retry(pack_work_root, 5, Duration::from_millis(200));
+    remove_dir_all_retry(backup_dir, 5, Duration::from_millis(200));
+
+    fs::create_dir_all(pack_work_root).context("Failed to recreate unpacked root directory")?;
+    fs::create_dir_all(backup_dir).context("Failed to recreate backup directory")?;
+
+    // Recreate backups immediately to ensure subsequent steps use the new files.
+    backup_always(&game_paths.main, &backups.main)?;
+    backup_always(&game_paths.sodor_core, &backups.sodor_core)?;
+    backup_always(&game_paths.james_core, &backups.james_core)?;
+
+    Ok(true)
+}
+
+fn remove_dir_all_retry(path: &Path, retries: usize, wait: Duration) {
+    if !path.is_dir() {
+        return;
+    }
+    let mut last_err: Option<std::io::Error> = None;
+    for _ in 0..retries {
+        match fs::remove_dir_all(path) {
+            Ok(()) => {
+                last_err = None;
+                break;
+            }
+            Err(e) => {
+                last_err = Some(e);
+                std::thread::sleep(wait);
+            }
+        }
+    }
+    if path.exists() {
+        if let Some(e) = last_err {
+            eprintln!("[WARN] フォルダの削除に失敗しました: {} ({e})", path.display());
+        } else {
+            eprintln!("[WARN] フォルダの削除に失敗しました: {}", path.display());
+        }
+    }
+}
+
+fn backup_always(src: &Path, dst: &Path) -> Result<()> {
+    println!();
+    println!(
+        "[backup] {}",
+        dst.file_name().and_then(OsStr::to_str).unwrap_or("pak")
+    );
+    if !src.is_file() {
+        bail!("[ERROR] 元 pak が見つかりませんでした: {}", src.display());
+    }
+    fs::create_dir_all(dst.parent().unwrap())?;
+    copy_file(src, dst)?;
+    println!("       バックアップを更新しました: {}", dst.display());
+    Ok(())
+}
+
+fn file_created_or_modified_time(p: &Path) -> Result<Option<SystemTime>> {
+    let md = match fs::metadata(p) {
+        Ok(v) => v,
+        Err(_) => return Ok(None),
+    };
+    // Prefer "created" time (birthtime). If unsupported, fall back to "modified".
+    if let Ok(t) = md.created() {
+        return Ok(Some(t));
+    }
+    if let Ok(t) = md.modified() {
+        return Ok(Some(t));
+    }
+    Ok(None)
+}
+
+fn system_time_from_jst_tuple(t: (i32, u32, u32, u32, u32, u32)) -> Result<SystemTime> {
+    let (y, m, d, hh, mm, ss) = t;
+    let utc_seconds = unix_seconds_from_ymdhms_utc(y, m, d, hh, mm, ss)
+        .ok_or_else(|| anyhow!("Invalid datetime: {y:04}-{m:02}-{d:02} {hh:02}:{mm:02}:{ss:02}"))?
+        - 9 * 60 * 60; // JST = UTC+9
+    Ok(UNIX_EPOCH + Duration::from_secs(utc_seconds as u64))
+}
+
+// Gregorian calendar conversion (UTC) without extra dependencies.
+// Returns None if inputs are out of range.
+fn unix_seconds_from_ymdhms_utc(
+    year: i32,
+    month: u32,
+    day: u32,
+    hour: u32,
+    min: u32,
+    sec: u32,
+) -> Option<i64> {
+    if !(1..=12).contains(&month) {
+        return None;
+    }
+    if day == 0 || day > 31 {
+        return None;
+    }
+    if hour > 23 || min > 59 || sec > 59 {
+        return None;
+    }
+    let days = days_from_civil(year, month as i32, day as i32)?;
+    Some(days * 86_400 + (hour as i64) * 3600 + (min as i64) * 60 + (sec as i64))
+}
+
+// Howard Hinnant's algorithm: days since 1970-01-01 (civil date).
+fn days_from_civil(y: i32, m: i32, d: i32) -> Option<i64> {
+    if d <= 0 || d > 31 {
+        return None;
+    }
+    if m <= 0 || m > 12 {
+        return None;
+    }
+    let y = y as i64;
+    let m = m as i64;
+    let d = d as i64;
+
+    let y_adj = y - if m <= 2 { 1 } else { 0 };
+    let era = if y_adj >= 0 { y_adj } else { y_adj - 399 } / 400;
+    let yoe = y_adj - era * 400; // [0, 399]
+    let mp = m + if m > 2 { -3 } else { 9 }; // March=0..Feb=11
+    let doy = (153 * mp + 2) / 5 + d - 1; // [0, 365]
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy; // [0, 146096]
+    let days = era * 146097 + doe - 719468; // 719468 = days to 1970-01-01
+    Some(days)
 }
 
 fn unpack_one(repak: &Path, pak: &Path, out: &Path, label: &str) -> Result<()> {
